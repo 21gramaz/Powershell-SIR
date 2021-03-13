@@ -1,3 +1,6 @@
+
+
+
 $path=Read-Host "type path:"
 $logfiles=Get-ChildItem -Recurse -File -Filter *.evtx -Path $path
 

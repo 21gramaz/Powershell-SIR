@@ -4,10 +4,10 @@ Timelining an incident:
 Incident -> Security Alert/Abnormal Behavior -> Incident Response Steps -> Forensicf
 
 Usually incident reponse will comes to this:
-Compromised Server identified -> Someone find something wrong and turn off the server/desktop, lose all the memory and temporary files that would be crucial for further investigation -> As there is no way to determine what have been done the recommendation would be rebuild the server and reset all users that had any information/logged there.
+Alert/Abnormal Behavior -> Someone find something wrong and turn off the server/desktop, lose all the memory and temporary files that would be crucial for further investigation -> As there is no way to determine what have been done the recommendation would be rebuild the server and reset all users that had any information/logged there.
 
 In an ideal situation:
-Compromised virtual Server identified -> Snapshot of the VM+Memory for futher investigation before any action -> Basic Containment -> Investigation -> Remediation/Eradication -> lessons learned
+Alert/Abnormal Behavior -> Artifact Collection -> Investigation -> confirmed incident ->Snapshot of the VM+Memory for futher investigation before any action -> Basic Containment ->  -> Remediation/Eradication -> lessons learned
 
 When EDR+SIEM are not in play for an incident all comes to adhoc IR this project is made to enable analysts to automate the common part of it that would be:
     Endpoint collection of logs and artifacts of interest.
@@ -15,11 +15,9 @@ When EDR+SIEM are not in play for an incident all comes to adhoc IR this project
     Endpoint Remediation/Eradication.    
 
 Invoke-SecurityIncidentResponse
-    1 - Check OS version, CPU architeture.
-    2 - Hostname.
-    3 - Powershell Version.
-    4 - System info.
-    5 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).
+    1 - Check OS version, CPU architeture, Hostname, DNS resolution.
+    2 - Powershell Version.
+    3 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).
     Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.
 
 Invoke-ArtifactsCollection
@@ -53,4 +51,10 @@ Remediation/Eradication
     5 - Remove endpoint Firewall Rule/Proxy.
     6 - Remove list of files by path+name or hash.
     7 - Remove Application (Maybe)
-    8 - Remove browser extenstions.
+    8 - Remove browser extenstions  (Maybe)
+
+
+References:
+https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/
+https://github.com/davehull/Kansa/tree/master/Modules
+https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershell_3393

@@ -1,7 +1,6 @@
 # Executes Basic checks for the target host/hosts.
 #
-#
-#Requires -Version 5
+
 
 
 [CmdletBinding(DefaultParameterSetName = "Containment")]
@@ -50,7 +49,7 @@ begin{
         )
 
             $command={$hostinfo=Get-CimInstance Win32_OperatingSystem;
-                $hostinfo | Add-Member -NotePropertyName PowershellVersion -NotePropertyValue $host.Version; 
+                $hostinfo | Add-Member -NotePropertyName PowershellVersion -NotePropertyValue $PSVersionTable; 
                 $hostinfo}
             $parameters=@{scriptblock = $command}
             if ($Credential) {
@@ -58,6 +57,7 @@ begin{
             }
                 if($null -ne $ComputerName){
                     $hostinfo=Invoke-Command -ComputerName $ComputerName @parameters
+                    $hostinfo | Add-Member -NotePropertyName ComputerName -NotePropertyValue $ComputerName
                     return $hostinfo
                 }
                 else{
@@ -79,7 +79,7 @@ process{
         if ($Containment){
             write-host "Startin Containment"
             Import-Module -Name "$PSScriptRoot\Invoke-Containment.ps1"
-            Invoke-Containment -ContainmentType All -ComputerInfo $hostinfo
+            Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostinfo
         }
         if ($Remediation){
             write-host "Startin Remediation"

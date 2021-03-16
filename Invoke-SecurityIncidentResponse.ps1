@@ -22,9 +22,9 @@ param (
     $Remediation,
 
     [Parameter(ParameterSetName = "Collection")]
-    [switch]
+    [string]
     $CollectionType,
-
+    
     [Parameter(ParameterSetName = "Contaiment")]
     [string]
     $ContainmentType,
@@ -78,8 +78,11 @@ process{
         }
         if ($Containment){
             write-host "Startin Containment"
+            
             Import-Module -Name "$PSScriptRoot\Invoke-Containment.ps1"
-            Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostinfo
+            
+            Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostinfo 
+            
         }
         if ($Remediation){
             write-host "Startin Remediation"

@@ -35,12 +35,16 @@ param (
     $RemediationType,
 
     [switch]
-    $usecreds
+    $usecreds,
+
+    [switch]
+    $usesessions
 )
 
 begin{
     $ErrorActionPreference = "stop"
-    function get-basicinfo {
+    function get-basicinfo 
+    {
         param(
             [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
             [string[]]    
@@ -58,30 +62,29 @@ begin{
             $command={
                 $hostinfo=Get-CimInstance Win32_OperatingSystem;
                 $hostinfo | Add-Member -NotePropertyName PowershellVersion -NotePropertyValue $PSVersionTable; 
-                $hostinfo
             }
             $parameters=@{scriptblock = $command}
-            #if ($Credential) {
-                #$parameters.Credential = $Credential
-            #}
-                if($null -ne $ComputerName){
-                    write-host "[*] Gathering basic information about the host" -ForegroundColor Yellow
-                    try{ 
-                        $hostinfo=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
-                        $hostinfo | Add-Member -NotePropertyName ComputerName -NotePropertyValue $ComputerName -ErrorAction Stop
-                    }
-                    catch {
-                        write-host "[-] Houston we had a problem gathering the basic info... " -ForegroundColor Red
-                        Write-Host $_ -ForegroundColor Red
-                        exit
-                    }
-                    
-                    return $hostinfo
+            if($null -ne $ComputerName)
+            {
+                write-host "[*] Gathering basic information about the host" -ForegroundColor Yellow
+                try
+                { 
+                    $hostinfo=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
+                    $hostinfo | Add-Member -NotePropertyName ComputerName -NotePropertyValue $ComputerName -ErrorAction Stop
                 }
-                else{
-                    $hostinfo=Invoke-Command @parameters
-                    return $hostinfo
+                catch 
+                {
+                    write-host "[-] Houston we had a problem gathering the basic info... " -ForegroundColor Red
+                    Write-Host $_ -ForegroundColor Red
+                    exit
                 }
+                return $hostinfo
+            }
+            else
+            {
+                $hostinfo=Invoke-Command @parameters
+                return $hostinfo
+            }
     }
 }
 process{
@@ -96,16 +99,29 @@ process{
     {
         $sessions=@()
         $counter=0
-        try {
+        try 
+        {
             if($usecreds)
             {
-                $sessions=New-PSSession $ComputerName -Credential $creds -Name $ComputerName -ErrorAction Stop
+                foreach($computer in $ComputerName)
+                {
+                    $sessionName="SIR"+$counter
+                    $sessions+=New-PSSession $ComputerName -Credential $creds -Name $sessionName -ErrorAction Stop
+                    $counter++
+                }
+            }
+            elseif($usesessions)
+            {
+                foreach($computer in $ComputerName)
+                {
+                    $sessions+=Get-PSSession | Where-Object {$_.Name -match "SIR"} | Where-Object {$_.ComputerName -eq $computer}
+                }
             }
             else
             {
                 foreach($computer in $ComputerName)
                 {
-                    $sessionName="Containment"+$counter
+                    $sessionName="SIR"+$counter
                     $sessions+=New-PSSession $computer -Name $sessionName -ErrorAction Stop
                     $counter++
                 }
@@ -121,19 +137,34 @@ process{
 
     #Getting basic info
     $hostsinfo=@()
-    try
+    if($null -ne $ComputerName)
     {
-        foreach ($session in $sessions)
+        try
         {
-            $hostsinfo+=get-basicinfo -ComputerName $ComputerName -Session $session -ErrorAction Stop
+            foreach ($session in $sessions)
+            {
+                $hostsinfo+=get-basicinfo -ComputerName $ComputerName -Session $session -ErrorAction Stop
+            }
+        }
+        catch{
+            write-host "[-] Houston we had a problem... " -ForegroundColor Red
+            Write-Host $_ -ForegroundColor Red
+            exit
         }
     }
-    catch{
-        write-host "[-] Houston we had a problem... " -ForegroundColor Red
-        Write-Host $_ -ForegroundColor Red
-        exit
+    else
+    {
+        try
+        {
+            $hostsinfo+=get-basicinfo -ErrorAction Stop
+        }
+        catch{
+            write-host "[-] Houston we had a problem... " -ForegroundColor Red
+            Write-Host $_ -ForegroundColor Red
+            exit
+        }
     }
-    
+
     foreach ($hostinfo in $hostsinfo)
     {
         write-host "[+] Basic information gathered Host: " $hostinfo.CSName ", OS Version: " $hostinfo.Version ", Arch: " $hostinfo.OSArchitecture " PS version: "  $hostinfo.PowershellVersion.PSVersion -ForegroundColor Green
@@ -145,7 +176,7 @@ process{
         foreach ($session in $sessions)
         {
             if ($Collection){
-                write-host "Startin Collection"
+                write-host "Starting Collection"
             }
             if ($Containment){
                 write-host "[+] Starting Containment" -ForegroundColor Green
@@ -161,21 +192,20 @@ process{
                 }
             }
             if ($Remediation){
-                write-host "Startin Remediation"
+                write-host "Starting Remediation"
             }
         }
     }
     else{
         if ($Collection){
-            write-host "Startin Collection"
+            write-host "Starting Collection"
         }
         if ($Containment){
             write-host "[+] Starting Containment" -ForegroundColor Green
             try{
                 Remove-Module -Name Invoke-Containment -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-Containment.ps1" 
-                if($ComputerName){
-                Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostinfo -LocalHost}
+                Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostsinfo -LocalHost
             }
             catch{
                 write-host "[-] Houston we had a problem... " -ForegroundColor Red
@@ -183,7 +213,7 @@ process{
             }
         }
         if ($Remediation){
-            write-host "Startin Remediation"
+            write-host "Starting Remediation"
         }
     }
 

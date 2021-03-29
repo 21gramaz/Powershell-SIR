@@ -3,7 +3,8 @@ This module will have all functions to
 
 #>
 $ErrorActionPreference = "stop"
-function Invoke-NetworkIsolation {
+function Invoke-NetworkIsolation 
+{
     param (
         [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         [string[]]    
@@ -110,7 +111,8 @@ function Invoke-NetworkIsolation {
 
     
 }
-function Invoke-NetworkRelease {
+function Invoke-NetworkRelease 
+{
     param (
         [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         [string[]]    
@@ -210,7 +212,8 @@ function Invoke-NetworkRelease {
 
 
 }
-function Invoke-Containment{
+function Invoke-Containment
+{
     param(
         [Parameter(Mandatory=$true)]
         [String]

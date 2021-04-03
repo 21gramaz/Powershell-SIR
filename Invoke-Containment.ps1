@@ -1,5 +1,10 @@
 <#Invoke-Contaiment
 This module will have all functions to 
+    1 - Host isolation.
+    2 - Process termination.
+    3 - Terminate user session.
+    4 - Restart service.
+    5 - Release from isolation.
 
 #>
 $ErrorActionPreference = "stop"
@@ -263,7 +268,6 @@ function Invoke-Containment
         }
     }
 }
-
 function Invoke-ContainmentConsole
 {
     param(

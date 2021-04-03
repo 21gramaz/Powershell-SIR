@@ -61,16 +61,18 @@ begin{
 
             $command={
                 $hostinfo=Get-CimInstance Win32_OperatingSystem;
-                $hostinfo | Add-Member -NotePropertyName PowershellVersion -NotePropertyValue $PSVersionTable; 
+                $hostinfo | Add-Member -NotePropertyName PowershellVersion -NotePropertyValue $PSVersionTable;
+                return $hostinfo
             }
             $parameters=@{scriptblock = $command}
+            write-host "[*] Gathering basic information about the host" -ForegroundColor Yellow
             if($null -ne $ComputerName)
             {
-                write-host "[*] Gathering basic information about the host" -ForegroundColor Yellow
                 try
                 { 
-                    $hostinfo=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
-                    $hostinfo | Add-Member -NotePropertyName ComputerName -NotePropertyValue $ComputerName -ErrorAction Stop
+                    $hostinfo2=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
+                    $hostinfo2 | Add-Member -NotePropertyName ComputerName -NotePropertyValue $ComputerName -ErrorAction Stop
+                    
                 }
                 catch 
                 {
@@ -78,12 +80,13 @@ begin{
                     Write-Host $_ -ForegroundColor Red
                     exit
                 }
-                return $hostinfo
+                return $hostinfo2
             }
             else
             {
-                $hostinfo=Invoke-Command @parameters
-                return $hostinfo
+                $hostinfo1=Get-CimInstance Win32_OperatingSystem;
+                $hostinfo1 | Add-Member -NotePropertyName PowershellVersion -NotePropertyValue $PSVersionTable;
+                return $hostinfo1
             }
     }
 }
@@ -95,16 +98,21 @@ process{
 
     #Initiating session if not local
     #Needs to be done on multiple sessions:
+
     if($null -ne $ComputerName)
     {
         $sessions=@()
-        $counter=0
+        #checking number of sessions named SIR to name the next session correctly.
+        $sessionoffset=((Get-PSSession | Where-Object {$_.Name -match "SIR"} | Where-Object {$_.State -eq "Opened"} ).Name -replace "SIR","")
+        $sessionoffsetnumber = ($sessionoffset  | Measure-Object -Maximum ).Maximum + 1
+        $counter=$sessionoffsetnumber
         try 
         {
             if($usecreds)
             {
                 foreach($computer in $ComputerName)
                 {
+                    write-host "[*] Initiating Powershell sessions with password" -ForegroundColor Yellow
                     $sessionName="SIR"+$counter
                     $sessions+=New-PSSession $ComputerName -Credential $creds -Name $sessionName -ErrorAction Stop
                     $counter++
@@ -112,13 +120,15 @@ process{
             }
             elseif($usesessions)
             {
+                write-host "[*] Initiating Powershell sessions with existing sessions" -ForegroundColor Yellow
                 foreach($computer in $ComputerName)
                 {
-                    $sessions+=Get-PSSession | Where-Object {$_.Name -match "SIR"} | Where-Object {$_.ComputerName -eq $computer}
+                    $sessions+=Get-PSSession | Where-Object {$_.Name -match "SIR"} | Where-Object {$_.State -eq "Opened"} | Where-Object {$_.ComputerName -eq $computer} | Sort-Object -Property ComputerName -Unique
                 }
             }
             else
             {
+                write-host "[*] Initiating Powershell sessions with existing powershell console privileges" -ForegroundColor Yellow
                 foreach($computer in $ComputerName)
                 {
                     $sessionName="SIR"+$counter
@@ -156,7 +166,7 @@ process{
     {
         try
         {
-            $hostsinfo+=get-basicinfo -ErrorAction Stop
+            $hostsinfo=get-basicinfo -ErrorAction Stop
         }
         catch{
             write-host "[-] Houston we had a problem... " -ForegroundColor Red

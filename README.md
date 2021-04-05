@@ -21,6 +21,7 @@ Invoke-SecurityIncidentResponse
     Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.
 
 Invoke-ArtifactsCollection
+
 Detection/Investigation/Artifacts Collection
     Disk:
     1 - Collect windows logs from winevt.

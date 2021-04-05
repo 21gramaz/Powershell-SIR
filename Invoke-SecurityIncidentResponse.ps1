@@ -22,6 +22,7 @@ param (
     $Remediation,
 
     [Parameter(Mandatory=$true,ParameterSetName = "Collection")]
+    [ValidateSet("Disk", "Memory","All")]
     [string]
     $CollectionType,
     
@@ -43,6 +44,10 @@ param (
 
 begin{
     $ErrorActionPreference = "stop"
+    function Get-TimeStamp
+{
+    get-date -Format "MM/dd/yyyy HH:mm:ss K"
+}
     function get-basicinfo 
     {
         param(
@@ -65,7 +70,7 @@ begin{
                 return $hostinfo
             }
             $parameters=@{scriptblock = $command}
-            write-host "[*] Gathering basic information about the host" -ForegroundColor Yellow
+            write-host "[*][$(Get-TimeStamp)] Gathering basic information about the host" -ForegroundColor Yellow
             if($null -ne $ComputerName)
             {
                 try
@@ -76,7 +81,7 @@ begin{
                 }
                 catch 
                 {
-                    write-host "[-] Houston we had a problem gathering the basic info... " -ForegroundColor Red
+                    write-host "[-][$(Get-TimeStamp)] Houston we had a problem gathering the basic info... " -ForegroundColor Red
                     Write-Host $_ -ForegroundColor Red
                     exit
                 }
@@ -112,7 +117,7 @@ process{
             {
                 foreach($computer in $ComputerName)
                 {
-                    write-host "[*] Initiating Powershell sessions with password" -ForegroundColor Yellow
+                    write-host "[*][$(Get-TimeStamp)] Initiating Powershell sessions with password" -ForegroundColor Yellow
                     $sessionName="SIR"+$counter
                     $sessions+=New-PSSession $ComputerName -Credential $creds -Name $sessionName -ErrorAction Stop
                     $counter++
@@ -120,7 +125,7 @@ process{
             }
             elseif($usesessions)
             {
-                write-host "[*] Initiating Powershell sessions with existing sessions" -ForegroundColor Yellow
+                write-host "[*][$(Get-TimeStamp)] Initiating Powershell sessions with existing sessions" -ForegroundColor Yellow
                 foreach($computer in $ComputerName)
                 {
                     $sessions+=Get-PSSession | Where-Object {$_.Name -match "SIR"} | Where-Object {$_.State -eq "Opened"} | Where-Object {$_.ComputerName -eq $computer} | Sort-Object -Property ComputerName -Unique
@@ -128,7 +133,7 @@ process{
             }
             else
             {
-                write-host "[*] Initiating Powershell sessions with existing powershell console privileges" -ForegroundColor Yellow
+                write-host "[*][$(Get-TimeStamp)] Initiating Powershell sessions with existing powershell console privileges" -ForegroundColor Yellow
                 foreach($computer in $ComputerName)
                 {
                     $sessionName="SIR"+$counter
@@ -139,7 +144,7 @@ process{
         }
         catch 
         {
-            Write-host "Houston we had a problem..." -ForegroundColor Red
+            Write-host "[-][$(Get-TimeStamp)]Houston we had a problem..." -ForegroundColor Red
             Write-host $_ -ForegroundColor Red
             exit 
         }
@@ -157,7 +162,7 @@ process{
             }
         }
         catch{
-            write-host "[-] Houston we had a problem... " -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
             exit
         }
@@ -169,7 +174,7 @@ process{
             $hostsinfo=get-basicinfo -ErrorAction Stop
         }
         catch{
-            write-host "[-] Houston we had a problem... " -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
             exit
         }
@@ -177,7 +182,7 @@ process{
 
     foreach ($hostinfo in $hostsinfo)
     {
-        write-host "[+] Basic information gathered Host: " $hostinfo.CSName ", OS Version: " $hostinfo.Version ", Arch: " $hostinfo.OSArchitecture " PS version: "  $hostinfo.PowershellVersion.PSVersion -ForegroundColor Green
+        write-host "[+][$(Get-TimeStamp)] Basic information gathered Host: " $hostinfo.CSName ", OS Version: " $hostinfo.Version ", Arch: " $hostinfo.OSArchitecture " PS version: "  $hostinfo.PowershellVersion.PSVersion -ForegroundColor Green
     }
     
     #Call IR phase
@@ -185,19 +190,30 @@ process{
     {
         foreach ($session in $sessions)
         {
-            if ($Collection){
-                write-host "Starting Collection"
+            if ($Collection)
+            {
+                write-host "[+][$(Get-TimeStamp)] Starting Collection" -ForegroundColor Green
+                try
+                {
+                    Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
+                    Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
+                    Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -Session $session
+                }
+                catch
+                {
+                    write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+                    Write-Host $_ -ForegroundColor Red
+                }
             }
             if ($Containment){
-                write-host "[+] Starting Containment" -ForegroundColor Green
+                write-host "[+][$(Get-TimeStamp)] Starting Containment" -ForegroundColor Green
                 try{
                     Remove-Module -Name Invoke-Containment -ErrorAction SilentlyContinue
                     Import-Module -Name "$PSScriptRoot\Invoke-Containment.ps1"
                     Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostinfo -Session $session
-                    #Invoke-ContainmentConsole -Session $session -ComputerInfo $hostsinfo
                 }
                 catch{
-                    write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                    write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                     Write-Host $_ -ForegroundColor Red
                 }
             }
@@ -208,17 +224,30 @@ process{
     }
     else{
         if ($Collection){
-            write-host "Starting Collection"
+            write-host "[+][$(Get-TimeStamp)] Starting Collection" -ForegroundColor Green
+            try
+            {
+                Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
+                Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
+                Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -LocalHost
+            }
+            catch
+            {
+                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                Write-Host $_ -ForegroundColor Red
+            }
         }
         if ($Containment){
-            write-host "[+] Starting Containment" -ForegroundColor Green
-            try{
+            write-host "[+][$(Get-TimeStamp)] Starting Containment" -ForegroundColor Green
+            try
+            {
                 Remove-Module -Name Invoke-Containment -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-Containment.ps1" 
                 Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostsinfo -LocalHost
             }
-            catch{
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+            catch
+            {
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
             }
         }

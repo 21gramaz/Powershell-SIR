@@ -8,6 +8,11 @@ This module will have all functions to
 
 #>
 $ErrorActionPreference = "stop"
+function Get-TimeStamp
+{
+    get-date -Format "MM/dd/yyyy HH:mm:ss K"
+}
+
 function Invoke-NetworkIsolation 
 {
     param (
@@ -25,14 +30,13 @@ function Invoke-NetworkIsolation
     )
     begin
     {
-        write-host "[*]["$Session.ComputerName"] Attempting to add local windows firewall rule 'Block Outbound connections'. Nothing out is allowed" -ForegroundColor Yellow
-        write-host "[*]["$Session.ComputerName"] Attempting to add local windows firewall rule 'Block Inbound connections'. Just RDP and WinRM are allowed" -ForegroundColor Yellow 
+
+        write-host "[*][$(Get-TimeStamp)]["$Session.ComputerName"] Attempting to add local windows firewall rule 'Block Outbound connections'. Nothing out is allowed" -ForegroundColor Yellow
+        write-host "[*][$(Get-TimeStamp)]["$Session.ComputerName"] Attempting to add local windows firewall rule 'Block Inbound connections'. Just RDP and WinRM are allowed" -ForegroundColor Yellow 
         
         #Commands that will be executed to add the firewall rules the server
         #It will block all incoming traffic this means all servers will stop to work like IIS/Exchange Server/AD.
         $firewallisolationrule={
-            #New-NetFirewallRule -DisplayName "Block Outbound connections" -Direction Outbound -Action Block -RemotePort 0-87,89-388,390-65535 -Protocol UDP;
-            #New-NetFirewallRule -DisplayName "Block Outbound connections" -Direction Outbound -Action Block -Protocol TCP;
             New-NetFirewallRule -DisplayName "Block Outbound connections" -Direction Outbound -Action Block -LocalPort 0-87,89-65535 -Protocol UDP
             New-NetFirewallRule -DisplayName "Block Inbound connections" -Direction Inbound -Action Block -LocalPort 0-5984,5987-65535 -Protocol TCP
             $firewallprofiles=Get-NetFirewallProfile;
@@ -45,15 +49,16 @@ function Invoke-NetworkIsolation
 
         #Commands that will be executed to check if the rules had been added.
         $containmentstatus={
+            function Get-TimeStamp{ get-date -Format "MM/dd/yyyy HH:mm:ss K"}
             $CheckingRulesAdded=Get-NetFirewallRule | Where-Object {$_.DisplayName -match '(Block Outbound connections)|(Block Inbound connections)'}
             if($CheckingRulesAdded.Count -eq 2)
             {
-                write-host "[+] Firewall rules successfully added" -ForegroundColor Green
-                Write-Host "[+] Rules identifiers: " $CheckingRulesAdded.Name -ForegroundColor Green
-                Write-Host "[*] Warning: If you are running this script to a remote computer do not close this Powershell Console you might lose the last working session" -ForegroundColor Yellow
+                write-host "[+][$(Get-TimeStamp)]["$Session.ComputerName"] Firewall rules successfully added" -ForegroundColor Green
+                Write-Host "[+][$(Get-TimeStamp)]["$Session.ComputerName"] Rules identifiers: " $CheckingRulesAdded.Name -ForegroundColor Green
+                Write-Host "[*][$(Get-TimeStamp)]["$Session.ComputerName"] Warning: If you are running this script to a remote computer do not close this Powershell Console you might lose the last working session" -ForegroundColor Yellow
             }
             else{
-                write-host "[-] Firewall rules could not be found, something went wrong" -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)]["$Session.ComputerName"] Firewall rules could not be found, something went wrong" -ForegroundColor Red
                 exit
             }   
         }
@@ -69,7 +74,7 @@ function Invoke-NetworkIsolation
                 Invoke-Command @parameters -ErrorAction Stop | Out-Null
             }
             catch{
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
                 exit           
             }
@@ -80,7 +85,7 @@ function Invoke-NetworkIsolation
                 Invoke-Command -Session $Session @parameters -ErrorAction Stop | Out-Null
             }
             catch{
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
                 exit
             }
@@ -96,7 +101,7 @@ function Invoke-NetworkIsolation
                 Invoke-Command @statusparameters -ErrorAction Stop | Out-Null
             }
             catch{
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
                 exit        
             }
@@ -107,7 +112,7 @@ function Invoke-NetworkIsolation
                 Invoke-Command -Session $Session @statusparameters -ErrorAction Stop | Out-Null
             }
             catch{
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
                 exit
             }
@@ -135,8 +140,8 @@ function Invoke-NetworkRelease
     begin
     {
         
-        write-host "[*]["$Session.ComputerName"] Removing local windows firewall rule 'Block Outbound connections'" -ForegroundColor Yellow
-        write-host "[*]["$Session.ComputerName"] Removing to remove local windows firewall rule 'Block Inbound connections'" -ForegroundColor Yellow
+        write-host "[*][$(Get-TimeStamp)]["$Session.ComputerName"] Removing local windows firewall rule 'Block Outbound connections'" -ForegroundColor Yellow
+        write-host "[*][$(Get-TimeStamp)]["$Session.ComputerName"] Removing to remove local windows firewall rule 'Block Inbound connections'" -ForegroundColor Yellow
         #commands to be performed to release from isolation.
         $firewallremoverules={
             Remove-NetFirewallRule -DisplayName "Block Outbound connections"
@@ -146,15 +151,16 @@ function Invoke-NetworkRelease
 
         #Commands to check of the rules had been removed.
         $containmentstatus={
+            function Get-TimeStamp{ get-date -Format "MM/dd/yyyy HH:mm:ss K"}
             $CheckingRulesAdded=Get-NetFirewallRule | Where-Object {$_.DisplayName -match '(Block Outbound connections)|(Block Inbound connections)'}
             if($CheckingRulesAdded.Count -eq 2)
             {
-                write-host "[-] Firewall could not be removed, please check your permissions and connectivity" -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)]["$Session.ComputerName"]  Firewall could not be removed, please check your permissions and connectivity" -ForegroundColor Red
                 Write-Host "Rules identifiers: " $CheckingRulesAdded.Name -ForegroundColor Red
                 exit
             }
             else{
-                write-host "[-] Firewall rules successfully removed " -ForegroundColor Green
+                write-host "[-][$(Get-TimeStamp)]["$Session.ComputerName"]  Firewall rules successfully removed " -ForegroundColor Green
             }   
         }
         $statusparameters=@{scriptblock = $containmentstatus}
@@ -171,7 +177,7 @@ function Invoke-NetworkRelease
             }
             catch
             {
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
             }
         }
@@ -183,7 +189,7 @@ function Invoke-NetworkRelease
             }
             catch
             {
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
             }
         }
@@ -197,7 +203,7 @@ function Invoke-NetworkRelease
                 Invoke-Command @statusparameters -ErrorAction Stop 
             }
             catch{
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
                 exit        
             }
@@ -208,7 +214,7 @@ function Invoke-NetworkRelease
                 Invoke-Command -Session $Session @statusparameters -ErrorAction Stop | Out-Null
             }
             catch{
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
                 exit
             }
@@ -249,7 +255,7 @@ function Invoke-Containment
         }
         else 
         {
-            write-host "[-] Containment type not existent or not implemented, check spelling and try again." -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Containment type not existent or not implemented, check spelling and try again." -ForegroundColor Red
         }
     }
     else
@@ -264,7 +270,7 @@ function Invoke-Containment
         }
         else 
         {
-            write-host "[-] Containment type not existent or not implemented, check spelling and try again." -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Containment type not existent or not implemented, check spelling and try again." -ForegroundColor Red
         }
     }
 }
@@ -290,16 +296,10 @@ function Invoke-ContainmentConsole
         }
         catch
         {
-            write-host "[-] Houston we had a problem... " -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
         }
     }while($command -ne "exit")
-    #Checks if the remote session is in an available state
-    <#$remotesessions=Get-PSSession
-    foreach ($remotesession in $remotesessions)
-    {
-        if ($remotesession -eq ){}
-    }#>
     Invoke-NetworkRelease  -ComputerName $ComputerInfo.ComputerName -Session $Session 
 }
 

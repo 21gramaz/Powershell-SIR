@@ -48,6 +48,7 @@ function Invoke-WindowsEventsCollection
                         $day+=$day
                         $retention+=1
                     }while($status=(Get-WinEvent -FilterXml $xmlfilter2 -MaxEvents 1 -ErrorAction SilentlyContinue ).Equals)
+                    $status | Out-Null
                     $metadata=@{
                         LogName=$logfile.name
                         LogFullName=$logfile.FullName
@@ -59,6 +60,7 @@ function Invoke-WindowsEventsCollection
                         LastAccessTime=$logfile.LastAccessTime
                         LastAccessTimeUtc=$logfile.LastAccessTimeUtc
                         SizeinMb='{0,7:N2}' -f ($logfile.Length / 1MB)
+                        ComputerName=$env:COMPUTERNAME
                     }
                     $WindowsEventsMetadata += New-Object -TypeName PSObject -Property $metadata
                 }
@@ -80,7 +82,10 @@ function Invoke-WindowsEventsCollection
                 }
                 else 
                 {
-                    Invoke-Command @parameters -ErrorAction Stop 
+                    write-host "[*][$(Get-TimeStamp)] Collecting Windows Events Metadata" -ForegroundColor Yellow
+                    $WEM=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
+                    $WEM | Export-Csv -Path "$PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"
+                    write-host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"  -ForegroundColor Green
                 }
             }
             catch

@@ -34,7 +34,7 @@ function Invoke-DiskInformationGathering
         [System.Management.Automation.Runspaces.PSSession]
         $Session
         )
-
+        $ErrorActionPreference = "stop"
     try
     {
         write-host "[*][$(Get-TimeStamp)] Inittiating disk information Gathering" -ForegroundColor Yellow
@@ -43,6 +43,10 @@ function Invoke-DiskInformationGathering
         if($Localhost)
         {
             Invoke-WindowsEventsCollection -LocalHost 
+        }
+        else 
+        {
+            Invoke-WindowsEventsCollection -ComputerName $ComputerInfo.ComputerName -Session $Session 
         }
     }
     catch

@@ -223,7 +223,8 @@ process{
         }
     }
     else{
-        if ($Collection){
+        if ($Collection)
+        {
             write-host "[+][$(Get-TimeStamp)] Starting Collection" -ForegroundColor Green
             try
             {

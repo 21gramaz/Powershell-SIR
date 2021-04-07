@@ -46,7 +46,8 @@ function Invoke-DiskInformationGathering
         }
         else 
         {
-            Invoke-WindowsEventsCollection -ComputerName $ComputerInfo.ComputerName -Session $Session 
+            #Invoke-WindowsEventsCollection -ComputerName $ComputerInfo.ComputerName -Session $Session 
+            Invoke-WindowsEventsCollection -Session $Session 
         }
     }
     catch
@@ -98,45 +99,91 @@ function Invoke-InformationGathering
         [Object]
         $Session
     )
-    try
-    {
-        if($LocalHost)
-        {
-            if($InformationGatheringType -eq "Disk")
-            { 
-                Invoke-DiskInformationGathering -LocalHost
-            }
-            elseif($InformationGatheringType -eq "Memory")
-            { 
-                Invoke-MemoryInformationGathering -LocalHost
-            }
-            else 
-            {
-                write-host "[-] Information Gathering type not existent or not implemented, check spelling and try again." -ForegroundColor Red
-            }
+    begin{
+        $psdrivefreespace={
+            $drivesfreespace1=(Get-PSDrive |Where-Object {$_.Provider -match "FileSystem"})
+            return $drivesfreespace1
         }
-        else
+        $psdrivefreespaceparameter=@{scriptblock = $psdrivefreespace}
+    }
+    Process
+    {
+        try
         {
-            if($InformationGatheringType -eq "Disk")
+            if($LocalHost)
             {
-                foreach($singlesession in $session)
+                if($InformationGatheringType -eq "Disk")
+                { 
+                    $formatedlogsize=Invoke-DiskInformationGathering -LocalHost
+                    $drivesfreespace=Invoke-Command @psdrivefreespaceparameter
+                    foreach ($drive in $drivesfreespace)
+                    {
+                        $drivefreespace='{0,7:N2}' -f ($drive.Free / 1MB)
+                        if($drive.Free -gt $formatedlogsize)
+                        {
+                            Write-Host "[+][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is enough space to copy" -ForegroundColor Green
+                        }
+                        else
+                        {
+                            Write-Host "[-][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is not enough space to copy" -ForegroundColor Red
+                            Write-Host "Free space and try again"
+                            break
+                        }
+                        
+                    }
+                }
+                elseif($InformationGatheringType -eq "Memory")
+                { 
+                    Invoke-MemoryInformationGathering -LocalHost
+                }
+                else 
                 {
-                    Invoke-DiskInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $singlesession
+                    write-host "[-] Information Gathering type not existent or not implemented, check spelling and try again." -ForegroundColor Red
                 }
             }
-            elseif($InformationGatheringType -eq "Memory")
-            { 
-                Invoke-MemoryInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $Session 
-            }
-            else 
+            else
             {
-                write-host "[-][$(Get-TimeStamp)] Information Gathering type  not existent or not implemented, check spelling and try again." -ForegroundColor Red
+                if($InformationGatheringType -eq "Disk")
+                {
+                    foreach($singlesession in $session)
+                    {
+                        $logsize=Invoke-DiskInformationGathering -Session $singlesession
+                        $logstotalsize = $logstotalsize+$logsize
+                    }
+    
+                    $drivesfreespace=Invoke-Command @psdrivefreespaceparameter 
+                    $formatedlogsize='{0,7:N2}' -f $logstotalsize
+                    Write-Host "[+][$(Get-TimeStamp)] Total log size: $formatedlogsize MB" -ForegroundColor Green
+                    foreach ($drive in $drivesfreespace)
+                    {
+                        $drivefreespace='{0,7:N2}' -f ($drive.Free / 1MB)
+                        if($drive.Free -gt $logstotalsize)
+                        {
+                            Write-Host "[+][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is enough space to copy" -ForegroundColor Green
+                        }
+                        else
+                        {
+                            Write-Host "[-][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is not enough space to copy" -ForegroundColor Red
+                            Write-Host "Free space and try again"
+                            break
+                        }
+                        
+                    }
+                }
+                elseif($InformationGatheringType -eq "Memory")
+                { 
+                    Invoke-MemoryInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $Session 
+                }
+                else 
+                {
+                    write-host "[-][$(Get-TimeStamp)] Information Gathering type  not existent or not implemented, check spelling and try again." -ForegroundColor Red
+                }
             }
         }
-    }
-    catch
-    {
-        write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
-        Write-Host $_ -ForegroundColor Red
+        catch
+        {
+            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+            Write-Host $_ -ForegroundColor Red
+        }
     }
 }

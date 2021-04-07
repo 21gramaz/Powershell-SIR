@@ -8,9 +8,9 @@ This script checks the retention period and copy all Windows Events to the expor
 function Invoke-WindowsEventsCollection
 {
     param (
-        [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
-        [string[]]    
-        $ComputerName,
+        #[Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+        #[string[]]    
+        #$ComputerName,
 
         [Parameter()]
         [switch]
@@ -68,13 +68,6 @@ function Invoke-WindowsEventsCollection
                 return $WindowsEventsMetadata
             }
             $parameters=@{scriptblock = $logretentionscript}
-
-            $psdrivefreespace={
-                $drivesfreespace1=(Get-PSDrive |Where-Object {$_.Provider -match "FileSystem"})
-                return $drivesfreespace1
-            }
-            $psdrivefreespaceparameter=@{scriptblock = $psdrivefreespace}
-
         }
         process
         {
@@ -91,25 +84,7 @@ function Invoke-WindowsEventsCollection
                     $formatedlogsize='{0,7:N2}' -f $logsize
                     
                     Write-Host "[+][$(Get-TimeStamp)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green
-                    $drivesfreespace=Invoke-Command @psdrivefreespaceparameter
-                    foreach ($drive in $drivesfreespace)
-                    {
-                        $drivefreespace='{0,7:N2}' -f ($drive.Free / 1MB)
-                        if($drivefreespace -gt $formatedlogsize)
-                        {
-                            Write-Host "[+][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is enough space to copy" -ForegroundColor Green
-                        }
-                        else
-                        {
-                            Write-Host "[-][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is not enough space to copy" -ForegroundColor Red
-                            Write-Host "Free space and try again"
-                            break
-                        }
-                        
-                    }
-                    
-
-                    
+                    return $formatedlogsize               
                 }
                 else 
                 {
@@ -117,30 +92,11 @@ function Invoke-WindowsEventsCollection
                     $WEM=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
                     $WEM | Export-Csv -Path "$PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"
                     
-                    write-host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"  -ForegroundColor Green
+                    write-host "[+][$(Get-TimeStamp)] [$($WEM[1].ComputerName)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"  -ForegroundColor Green
                     foreach ($file in $WEM){$logsize= $logsize+$file.SizeinMb}
                     $formatedlogsize='{0,7:N2}' -f $logsize
-                    
-                    Write-Host "[+][$(Get-TimeStamp)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green
-
-                    $drivesfreespace=Invoke-Command @psdrivefreespaceparameter 
-
-                    foreach ($drive in $drivesfreespace)
-                    {
-                        $drivefreespace='{0,7:N2}' -f ($drive.Free / 1MB)
-                        if($drivefreespace -gt $formatedlogsize)
-                        {
-                            Write-Host "[+][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is enough space to copy" -ForegroundColor Green
-                        }
-                        else
-                        {
-                            Write-Host "[-][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is not enough space to copy" -ForegroundColor Red
-                            Write-Host "Free space and try again"
-                            break
-                        }
-                        
-                    }
-                    #Write-Host "[+][$(Get-TimeStamp)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green
+                    Write-Host "[+][$(Get-TimeStamp)] [$($WEM[1].ComputerName)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green
+                    return $logsize
                 }
             }
             catch

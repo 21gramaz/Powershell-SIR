@@ -188,24 +188,25 @@ process{
     #Call IR phase
     if($null -ne $ComputerName)
     {
-        foreach ($session in $sessions)
+        if ($Collection)
         {
-            if ($Collection)
+            write-host "[+][$(Get-TimeStamp)] Starting Collection" -ForegroundColor Green
+            try
             {
-                write-host "[+][$(Get-TimeStamp)] Starting Collection" -ForegroundColor Green
-                try
-                {
-                    Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
-                    Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
-                    Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -Session $session
-                }
-                catch
-                {
-                    write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
-                    Write-Host $_ -ForegroundColor Red
-                }
+                Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
+                Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
+                Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -Session $sessions
             }
-            if ($Containment){
+            catch
+            {
+                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+                Write-Host $_ -ForegroundColor Red
+            }
+        }
+        if ($Containment)
+        {
+            foreach ($session in $sessions)
+            {
                 write-host "[+][$(Get-TimeStamp)] Starting Containment" -ForegroundColor Green
                 try{
                     Remove-Module -Name Invoke-Containment -ErrorAction SilentlyContinue
@@ -217,10 +218,11 @@ process{
                     Write-Host $_ -ForegroundColor Red
                 }
             }
-            if ($Remediation){
-                write-host "Starting Remediation"
-            }
         }
+        if ($Remediation){
+                write-host "Starting Remediation"
+        }
+        
     }
     else{
         if ($Collection)

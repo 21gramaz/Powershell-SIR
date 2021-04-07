@@ -94,7 +94,8 @@ function Invoke-InformationGathering
         $LocalHost,
 
         [Parameter()]
-        [System.Management.Automation.Runspaces.PSSession]
+        #[System.Management.Automation.Runspaces.PSSession]
+        [Object]
         $Session
     )
     try
@@ -117,8 +118,11 @@ function Invoke-InformationGathering
         else
         {
             if($InformationGatheringType -eq "Disk")
-            { 
-                Invoke-DiskInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $Session
+            {
+                foreach($singlesession in $session)
+                {
+                    Invoke-DiskInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $singlesession
+                }
             }
             elseif($InformationGatheringType -eq "Memory")
             { 

@@ -27,6 +27,7 @@ function Invoke-WindowsEventsCollection
             {
                 get-date -Format "MM/dd/yyyy HH:mm:ss K"
             }
+            
             $logretentionscript={
 
                 $WindowsEventsMetadata=@()
@@ -68,24 +69,78 @@ function Invoke-WindowsEventsCollection
             }
             $parameters=@{scriptblock = $logretentionscript}
 
+            $psdrivefreespace={
+                $drivesfreespace1=(Get-PSDrive |Where-Object {$_.Provider -match "FileSystem"})
+                return $drivesfreespace1
+            }
+            $psdrivefreespaceparameter=@{scriptblock = $psdrivefreespace}
 
         }
         process
         {
             try{
+                $logsize=0
                 if($Localhost)
                 {
                     write-host "[*][$(Get-TimeStamp)] Collecting Windows Events Metadata" -ForegroundColor Yellow
-                    $WEM=Invoke-Command @parameters -ErrorAction Stop 
+                    $WEM=Invoke-Command @parameters -ErrorAction Stop                     
                     $WEM | Export-Csv -Path "$PSScriptRoot\Reports\WindowsEventsMetadata.csv"
-                    write-host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata.csv"  -ForegroundColor Green
+                    
+                    Write-Host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata.csv"  -ForegroundColor Green
+                    foreach ($file in $WEM){$logsize= $logsize+$file.SizeinMb}
+                    $formatedlogsize='{0,7:N2}' -f $logsize
+                    
+                    Write-Host "[+][$(Get-TimeStamp)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green
+                    $drivesfreespace=Invoke-Command @psdrivefreespaceparameter
+                    foreach ($drive in $drivesfreespace)
+                    {
+                        $drivefreespace='{0,7:N2}' -f ($drive.Free / 1MB)
+                        if($drivefreespace -gt $formatedlogsize)
+                        {
+                            Write-Host "[+][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is enough space to copy" -ForegroundColor Green
+                        }
+                        else
+                        {
+                            Write-Host "[-][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is not enough space to copy" -ForegroundColor Red
+                            Write-Host "Free space and try again"
+                            break
+                        }
+                        
+                    }
+                    
+
+                    
                 }
                 else 
                 {
                     write-host "[*][$(Get-TimeStamp)] Collecting Windows Events Metadata" -ForegroundColor Yellow
                     $WEM=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
                     $WEM | Export-Csv -Path "$PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"
+                    
                     write-host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"  -ForegroundColor Green
+                    foreach ($file in $WEM){$logsize= $logsize+$file.SizeinMb}
+                    $formatedlogsize='{0,7:N2}' -f $logsize
+                    
+                    Write-Host "[+][$(Get-TimeStamp)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green
+
+                    $drivesfreespace=Invoke-Command @psdrivefreespaceparameter 
+
+                    foreach ($drive in $drivesfreespace)
+                    {
+                        $drivefreespace='{0,7:N2}' -f ($drive.Free / 1MB)
+                        if($drivefreespace -gt $formatedlogsize)
+                        {
+                            Write-Host "[+][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is enough space to copy" -ForegroundColor Green
+                        }
+                        else
+                        {
+                            Write-Host "[-][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is not enough space to copy" -ForegroundColor Red
+                            Write-Host "Free space and try again"
+                            break
+                        }
+                        
+                    }
+                    #Write-Host "[+][$(Get-TimeStamp)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green
                 }
             }
             catch

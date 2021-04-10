@@ -55,11 +55,11 @@ function Invoke-DiskInformationGathering
     try
     {
         write-host "[*][$(Get-TimeStamp)] Inittiating disk information Gathering" -ForegroundColor Yellow
-        Remove-Module -Name Invoke-WindowsEventsCollection -ErrorAction SilentlyContinue
-        Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsEventsCollection.ps1"
+        Remove-Module -Name Invoke-WindowsEventsCollectionMetadata -ErrorAction SilentlyContinue
+        Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsEventsCollectionMetadata.ps1"
         if($Localhost)
         {
-            $formatedlogsize=Invoke-WindowsEventsCollection -LocalHost -OutputPath $OutputPath
+            $formatedlogsize=Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath
             $drivesfreespace=Invoke-Command @psdrivefreespaceparameter
             foreach ($drive in $drivesfreespace)
             {
@@ -81,7 +81,7 @@ function Invoke-DiskInformationGathering
         {
             foreach($singlesession in $session)
             {
-                $logsize=Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath
+                $logsize=Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath
                 $logstotalsize = $logstotalsize+$logsize
             }
 

@@ -11,6 +11,10 @@ function Get-TimeStamp
 
 function Invoke-WindowsEventsCollection
 {
+
+}
+function Invoke-WindowsEventsCollectionMetadata
+{
     param (
         #[Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         #[string[]]    
@@ -32,7 +36,11 @@ function Invoke-WindowsEventsCollection
         begin
         {      
             $logretentionscript={
-
+                function Get-TimeStamp
+                {
+                    get-date -Format "MM/dd/yyyy HH:mm:ss K"
+                }
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating metadata logs calculation"  -ForegroundColor Green
                 $WindowsEventsMetadata=@()
                 $LogFiles=Get-ChildItem -Recurse -File -Filter *.evtx -Path "$env:SystemRoot\System32\Winevt\Logs\"
                 foreach ($logfile in $logfiles)

@@ -25,6 +25,10 @@ param (
     [ValidateSet("Disk", "Memory","All")]
     [string]
     $CollectionType,
+
+    [Parameter(ParameterSetName = "Collection")]
+    [string]
+    $CollectionOutputPath="$PSScriptRoot\Collection\Reports",
     
     [Parameter(Mandatory=$true,ParameterSetName = "Contaiment")]
     [ValidateSet("NetworkIsolation", "NetworkRelease")]
@@ -195,7 +199,7 @@ process{
             {
                 Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
-                Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -Session $sessions
+                Invoke-InformationGathering -InformationGatheringType $CollectionType -OutputPath $CollectionOutputPath -ComputerInfo $hostsinfo -Session $sessions
             }
             catch
             {
@@ -232,7 +236,7 @@ process{
             {
                 Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
-                Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -LocalHost
+                Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -LocalHost -OutputPath $CollectionOutputPath
             }
             catch
             {

@@ -4,6 +4,10 @@ This script checks the retention period and copy all Windows Events to the expor
 1 - Add time logs
 2 - add computer name to metadata
 #>
+function Get-TimeStamp
+{
+    get-date -Format "MM/dd/yyyy HH:mm:ss K"
+}
 
 function Invoke-WindowsEventsCollection
 {
@@ -17,17 +21,16 @@ function Invoke-WindowsEventsCollection
         $Localhost,
 
         [Parameter()]
+        [String]
+        $OutputPath,
+
+        [Parameter()]
         [System.Management.Automation.Runspaces.PSSession]
         $Session
         )
 
         begin
-        {
-            function Get-TimeStamp
-            {
-                get-date -Format "MM/dd/yyyy HH:mm:ss K"
-            }
-            
+        {      
             $logretentionscript={
 
                 $WindowsEventsMetadata=@()
@@ -77,9 +80,9 @@ function Invoke-WindowsEventsCollection
                 {
                     write-host "[*][$(Get-TimeStamp)] Collecting Windows Events Metadata" -ForegroundColor Yellow
                     $WEM=Invoke-Command @parameters -ErrorAction Stop                     
-                    $WEM | Export-Csv -Path "$PSScriptRoot\Reports\WindowsEventsMetadata.csv"
+                    $WEM | Export-Csv -Path "$OutputPath\WindowsEventsMetadata.csv"
                     
-                    Write-Host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata.csv"  -ForegroundColor Green
+                    Write-Host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $OutputPath\WindowsEventsMetadata.csv"  -ForegroundColor Green
                     foreach ($file in $WEM){$logsize= $logsize+$file.SizeinMb}
                     $formatedlogsize='{0,7:N2}' -f $logsize
                     
@@ -90,9 +93,9 @@ function Invoke-WindowsEventsCollection
                 {
                     write-host "[*][$(Get-TimeStamp)] Collecting Windows Events Metadata" -ForegroundColor Yellow
                     $WEM=Invoke-Command -Session $Session @parameters -ErrorAction Stop 
-                    $WEM | Export-Csv -Path "$PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"
+                    $WEM | Export-Csv -Path "$OutputPath\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"
                     
-                    write-host "[+][$(Get-TimeStamp)] [$($WEM[1].ComputerName)] Windows Events Metadata saved to $PSScriptRoot\Reports\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"  -ForegroundColor Green
+                    write-host "[+][$(Get-TimeStamp)] [$($WEM[1].ComputerName)] Windows Events Metadata saved to $OutputPath\WindowsEventsMetadata-$($WEM[1].ComputerName).csv"  -ForegroundColor Green
                     foreach ($file in $WEM){$logsize= $logsize+$file.SizeinMb}
                     $formatedlogsize='{0,7:N2}' -f $logsize
                     Write-Host "[+][$(Get-TimeStamp)] [$($WEM[1].ComputerName)] Total Windows Events Size(Mb): $formatedlogsize"  -ForegroundColor Green

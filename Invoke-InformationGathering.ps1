@@ -43,13 +43,7 @@ function Invoke-DiskInformationGathering {
     begin {
         $ErrorActionPreference = "stop"
         $OutputDrive = (Get-Item $OutputPath).PSDrive.Name
-        <#
-            $psdrivefreespace={
-            $drivesfreespace1=(Get-PSDrive |Where-Object {$_.Provider -match "FileSystem"})
-            return $drivesfreespace1
-        }
-        $psdrivefreespaceparameter=@{scriptblock = $psdrivefreespace}
-        #>
+
         function Get-TimeStamp {
             get-date -Format "MM/dd/yyyy HH:mm:ss K"
         }
@@ -64,7 +58,7 @@ function Invoke-DiskInformationGathering {
                 [String]
                 $OutputDrive
             )
-
+            #gets drives freespace 
             $psdrivefreespace =
             {
                 $drivesfreespace1 = (Get-PSDrive | Where-Object { $_.Provider -match "FileSystem" })
@@ -76,6 +70,7 @@ function Invoke-DiskInformationGathering {
             $formatedlogsize = '{0,7:N2}' -f $LogSize
             Write-Host "[+][$(Get-TimeStamp)] Total log size: $formatedlogsize MB" -ForegroundColor Green
             
+            #Checks if the path provided 
             foreach ($drive in $drivesfreespace) {
                 if ($drive.Name -eq $OutputDrive) {
                     $drivefreespace = '{0,7:N2}' -f ($drive.Free / 1MB)
@@ -87,10 +82,23 @@ function Invoke-DiskInformationGathering {
                         Write-Host "Free space and try again"
                         break
                     }
-                }                    
+                }
+                <#If the script cant confirm the the drive space
+                #never have tested this case:
+                else{
+                    do{
+                        $copyconfirmation=Read-Host "[*][$(Get-TimeStamp)] Could not check drive space to copy logs do you wish to continue?(Yes|No)" -ForegroundColor Yellow
+                        if ($copyconfirmation -eq "Yes"){
+                            Write-host "Copying Files"
+                        }
+                        else{
+                            Write-host "Stopping Script"
+                            break
+                        }
+                    }while(($copyconfirmation -ne "Yes") -and ($copyconfirmation -ne "No")) 
+                }#>
             }
         }
-
     }
 
     Process {
@@ -99,32 +107,24 @@ function Invoke-DiskInformationGathering {
             Remove-Module -Name Invoke-WindowsEventsCollection -ErrorAction SilentlyContinue
             Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsEventsCollection.ps1"
             if ($Localhost) {
+                #capturing logs metadata info: size, retention, creation date, sha256 hash.
                 $formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath
+                #confirming there is enough disk space for windows logs
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
+                #copying files to collection path
+                Invoke-WindowsEventsCollection -Localhost -OutputPath 
             }
             else {
+                #capturing logs metadata info: size, retention, creation date, sha256 hash.
                 foreach ($singlesession in $session) {
-                    $logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath
+                    $logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
                     $logstotalsize = $logstotalsize + $logsize
                 }
+                #confirming there is enough disk space
                 Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
-                <#
-                $drivesfreespace = Invoke-Command @psdrivefreespaceparameter 
-                $formatedlogsize = '{0,7:N2}' -f $logstotalsize
-                Write-Host "[+][$(Get-TimeStamp)] Total log size: $formatedlogsize MB" -ForegroundColor Green
-                foreach ($drive in $drivesfreespace) {
-                    $drivefreespace = '{0,7:N2}' -f ($drive.Free / 1MB)
-                    if ($drive.Free -gt $logstotalsize) {
-                        Write-Host "[+][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is enough space to copy" -ForegroundColor Green
-                    }
-                    else {
-                        Write-Host "[-][$(Get-TimeStamp)] Drive $drive has $drivefreespace Mb, there is not enough space to copy" -ForegroundColor Red
-                        Write-Host "Free space and try again"
-                        break
-                    }
-                
+                foreach ($singlesession in $session) {
+                    Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
                 }
-                #>
             }
         }
         catch {
@@ -179,11 +179,6 @@ function Invoke-InformationGathering {
         $Session
     )
     begin {
-        <#$psdrivefreespace={
-            $drivesfreespace1=(Get-PSDrive |Where-Object {$_.Provider -match "FileSystem"})
-            return $drivesfreespace1
-        }
-        $psdrivefreespaceparameter=@{scriptblock = $psdrivefreespace}#>
 
     }
     Process {

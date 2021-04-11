@@ -47,7 +47,8 @@ function Invoke-WindowsEventsCollection {
     }
     process {
         if ($Localhost) {
-            Copy-Item -FromSession $Session "C:\Windows\System32\winevt\Logs\" -Destination $OutputPath -Recurse
+            Invoke-Command @copywindowseventsparameters
+            Copy-Item "C:\Windows\System32\winevt\Logs\" -Destination $OutputPath -Recurse
         }
         else {
             Invoke-Command -Session $Session @copywindowseventsparameters
@@ -123,7 +124,9 @@ function Invoke-WindowsEventsCollectionMetadata {
             $logsize = 0
             if ($Localhost) {
                 write-host "[*][$(Get-TimeStamp)] Collecting Windows Events Metadata" -ForegroundColor Yellow
-                $WEM = Invoke-Command @parameters -ErrorAction Stop                     
+                $WEM = Invoke-Command @parameters -ErrorAction Stop 
+                #creates folder for the session Computer Name
+                if ($OutputPath) { New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null }                     
                 $WEM | Export-Csv -Path "$OutputPath\WindowsEventsMetadata.csv"
                     
                 Write-Host "[+][$(Get-TimeStamp)] Windows Events Metadata saved to $OutputPath\WindowsEventsMetadata.csv"  -ForegroundColor Green

@@ -83,20 +83,6 @@ function Invoke-DiskInformationGathering {
                         break
                     }
                 }
-                <#If the script cant confirm the the drive space
-                #never have tested this case:
-                else{
-                    do{
-                        $copyconfirmation=Read-Host "[*][$(Get-TimeStamp)] Could not check drive space to copy logs do you wish to continue?(Yes|No)" -ForegroundColor Yellow
-                        if ($copyconfirmation -eq "Yes"){
-                            Write-host "Copying Files"
-                        }
-                        else{
-                            Write-host "Stopping Script"
-                            break
-                        }
-                    }while(($copyconfirmation -ne "Yes") -and ($copyconfirmation -ne "No")) 
-                }#>
             }
         }
     }
@@ -108,11 +94,11 @@ function Invoke-DiskInformationGathering {
             Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsEventsCollection.ps1"
             if ($Localhost) {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
-                $formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath
+                $formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath\$env:COMPUTERNAME
                 #confirming there is enough disk space for windows logs
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
                 #copying files to collection path
-                Invoke-WindowsEventsCollection -Localhost -OutputPath 
+                Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
             }
             else {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.

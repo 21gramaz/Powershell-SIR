@@ -49,6 +49,7 @@ function Invoke-WindowsEventsCollection {
         if ($Localhost) {
             Invoke-Command @copywindowseventsparameters
             Copy-Item "C:\Windows\System32\winevt\Logs\" -Destination $OutputPath -Recurse
+            Invoke-Command @removetempfolderparameters
         }
         else {
             Invoke-Command -Session $Session @copywindowseventsparameters

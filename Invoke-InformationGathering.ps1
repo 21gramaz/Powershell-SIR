@@ -18,7 +18,7 @@ This module will have all functions to
             • Drives Info
             • Network interface details
             • Routing Table
-
+    13 - Installed Programs
 #>
 
 function Invoke-DiskInformationGathering {
@@ -91,7 +91,9 @@ function Invoke-DiskInformationGathering {
         try {
             write-host "[*][$(Get-TimeStamp)] Inittiating disk information Gathering" -ForegroundColor Yellow
             Remove-Module -Name Invoke-WindowsEventsCollection -ErrorAction SilentlyContinue
+            Remove-Module -Name Get-OSdetails -ErrorAction SilentlyContinue
             Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsEventsCollection.ps1"
+            Import-Module -Name "$PSScriptRoot\Collection\Get-OSdetails.ps1"
             if ($Localhost) {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
                 $formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath\$env:COMPUTERNAME
@@ -99,6 +101,7 @@ function Invoke-DiskInformationGathering {
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
                 #copying files to collection path
                 Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                Get-SystemDetails -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
             }
             else {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
@@ -110,6 +113,7 @@ function Invoke-DiskInformationGathering {
                 Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
                 foreach ($singlesession in $session) {
                     Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                    Get-SystemDetails -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
                 }
             }
         }

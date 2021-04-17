@@ -3,9 +3,11 @@
 
 
 
-[CmdletBinding(DefaultParameterSetName = "Containment")]
+#[CmdletBinding(DefaultParameterSetName = "Containment")]
 param (
     [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+    [Parameter(ParameterSetName = "Collection")]
+    [Parameter(ParameterSetName = "Contaiment")]
     [string[]]
     $ComputerName,
 
@@ -39,11 +41,19 @@ param (
     [switch]
     $RemediationType,
 
+    [Parameter(ParameterSetName = "Collection")]
+    [Parameter(ParameterSetName = "Contaiment")]
     [switch]
     $usecreds,
 
+    [Parameter(ParameterSetName = "Collection")]
+    [Parameter(ParameterSetName = "Contaiment")]
     [switch]
-    $usesessions
+    $usesessions,
+
+    [Parameter(Mandatory = $true, ParameterSetName = "UpdateModules")]
+    [switch]
+    $DownloadLatestThirdPartyModules
 )
 
 begin {
@@ -153,7 +163,7 @@ process {
             exit
         }
     }
-    else {
+    elseif($null -eq $DownloadLatestThirdPartyModules) {
         try {
             $hostsinfo = get-basicinfo -ErrorAction Stop
         }
@@ -231,4 +241,22 @@ process {
         }
     }
 
+    if ($DownloadLatestThirdPartyModules){
+        try {
+            write-host "[+][$(Get-TimeStamp)] Downloading latest Autoruns Module" -ForegroundColor Green
+            Save-Module -Name AutoRuns -Repository PSGallery -Path "$PSScriptRoot\Collection\"
+            $AutoRunsModulesPath=Get-ChildItem -Path "$PSScriptRoot\Collection\Autoruns\" -Recurse Autoruns.psm1
+            $AutoRunPS1=$($AutoRunsModulesPath.DirectoryName) + "\AutoRuns.ps1"
+            copy-item $AutoRunsModulesPath.FullName -Destination $AutoRunPS1
+            if("$PSScriptRoot\Collection\AutoRuns"){
+                write-host "[+][$(Get-TimeStamp)] Autoruns Downloaded" -ForegroundColor Green
+            }
+        }
+        catch {
+            write-host "[-] Houston we have a problem in UpdateThirdPartyModules" -ForegroundColor Red
+            Write-Host $_ -ForegroundColor Red
+            
+        }
+        
+    }
 }

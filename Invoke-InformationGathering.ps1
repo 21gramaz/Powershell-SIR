@@ -90,9 +90,9 @@ function Invoke-DiskInformationGathering {
     Process {
         try {
             write-host "[*][$(Get-TimeStamp)] Inittiating disk information Gathering" -ForegroundColor Yellow
-            Remove-Module -Name Invoke-WindowsEventsCollection -ErrorAction SilentlyContinue
+            Remove-Module -Name Invoke-WindowsFilesCollection -ErrorAction SilentlyContinue
             Remove-Module -Name Get-OSdetails -ErrorAction SilentlyContinue
-            Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsEventsCollection.ps1"
+            Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsFilesCollection.ps1"
             Import-Module -Name "$PSScriptRoot\Collection\Get-OSdetails.ps1"
             if ($Localhost) {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
@@ -101,6 +101,7 @@ function Invoke-DiskInformationGathering {
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
                 #copying files to collection path
                 Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                Invoke-WindowsPrefetchCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
                 Get-SystemDetails -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
             }
             else {
@@ -112,6 +113,7 @@ function Invoke-DiskInformationGathering {
                 #confirming there is enough disk space
                 Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
                 foreach ($singlesession in $session) {
+                    Invoke-WindowsPrefetchCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
                     Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
                     Get-SystemDetails -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
                 }

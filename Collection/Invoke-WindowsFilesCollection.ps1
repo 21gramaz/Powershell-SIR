@@ -1,13 +1,13 @@
 <#
 This script checks the retention period and copy all Windows Events to the export folder
 
-1 - Add time logs
-2 - add computer name to metadata
+1 - Create a table of retention time for each evtx log
+2 - Copy evtx files
+3 - Copy prefetch files
 #>
 function Get-TimeStamp {
     get-date -Format "MM/dd/yyyy HH:mm:ss K"
 }
-
 function Invoke-WindowsEventsCollection {
     param (
         [Parameter()]
@@ -31,7 +31,7 @@ function Invoke-WindowsEventsCollection {
             }
 
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Windows events copy"  -ForegroundColor Green
-            Copy-Item -Recurse -Path "C:\Windows\System32\winevt\Logs\" -Destination "C:\Users\Public\Logs"
+            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Destination "C:\Users\Public\Logs"
         }
         $copywindowseventsparameters = @{scriptblock = $copywindowsevents }
         $removetempfolder = {
@@ -47,9 +47,10 @@ function Invoke-WindowsEventsCollection {
     }
     process {
         if ($Localhost) {
-            Invoke-Command @copywindowseventsparameters
+            #Invoke-Command @copywindowseventsparameters
+            write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Windows events copy"  -ForegroundColor Green
             Copy-Item "C:\Windows\System32\winevt\Logs\" -Destination $OutputPath -Recurse
-            Invoke-Command @removetempfolderparameters
+            #Invoke-Command @removetempfolderparameters
         }
         else {
             Invoke-Command -Session $Session @copywindowseventsparameters
@@ -59,6 +60,67 @@ function Invoke-WindowsEventsCollection {
     }
 
 
+
+}
+function Invoke-WindowsPrefetchCollection{
+    param (
+        [Parameter()]
+        [switch]
+        $Localhost,
+
+        [Parameter()]
+        [String]
+        $OutputPath,
+
+        [Parameter()]
+        [System.Management.Automation.Runspaces.PSSession]
+        $Session
+    )
+    begin {
+        #creates folder to copy the logs
+        if ($OutputPath) { New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null } 
+        $copywindowsprefetch = {
+            function Get-TimeStamp {
+                get-date -Format "MM/dd/yyyy HH:mm:ss K"
+            }
+
+            write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Prefetch files copy"  -ForegroundColor Green
+            Copy-Item -Recurse -Path "C:\Windows\Prefetch\" -Destination "C:\Users\Public\Logs"
+        }
+        $copywindowsprefetchsparameters = @{scriptblock = $copywindowsprefetch }
+        $removetempfolder = {
+            function Get-TimeStamp {
+                get-date -Format "MM/dd/yyyy HH:mm:ss K"
+            }
+
+            write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Removing temp folder"  -ForegroundColor Green
+            Remove-Item -Recurse -Force -Path "C:\Users\Public\Logs"
+        }
+        $removetempfolderparameters = @{scriptblock = $removetempfolder }
+    }
+    process {
+        if ($Localhost) {
+            try{
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Prefetch files copy"  -ForegroundColor Green
+                Copy-Item -Recurse "C:\Windows\Prefetch\" -Destination $OutputPath 
+            }
+            catch {
+                write-host "[-][$(Get-TimeStamp)] Houston we have a problem in copying prefetch files... " -ForegroundColor Red
+                Write-Host $_ -ForegroundColor Red
+            }
+        }
+        else {
+            try{
+                Invoke-Command -Session $Session @copywindowsprefetchsparameters
+                Copy-Item -FromSession $Session "C:\Users\Public\Logs" -Destination $OutputPath -Recurse -ErrorAction Continue | Out-Null
+                Invoke-Command -Session $session @removetempfolderparameters
+            }
+            catch {
+                write-host "[-][$(Get-TimeStamp)] Houston we have a problem in copying prefetch files... " -ForegroundColor Red
+                Write-Host $_ -ForegroundColor Red
+            }
+        }
+    }
 
 }
 function Invoke-WindowsEventsCollectionMetadata {

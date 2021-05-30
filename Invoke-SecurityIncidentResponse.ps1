@@ -57,6 +57,7 @@ param (
 )
 
 begin {
+    Start-Transcript -OutputDirectory "$PSScriptRoot\Collection\Reports\" -NoClobber
     $ErrorActionPreference = "stop"
     function Get-TimeStamp {
         get-date -Format "MM/dd/yyyy HH:mm:ss K"
@@ -259,4 +260,5 @@ process {
         }
         
     }
+    Stop-Transcript
 }

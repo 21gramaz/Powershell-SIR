@@ -32,7 +32,7 @@ Function Show-ProcessTree {
         Function Get-ChildProcessesById {            
             Param($ID)            
             # use $allprocess variable instead of Get-WmiObject -Class Win32_process to speed up            
-            $allprocess | Where { $_.ParentProcessID -eq $ID } | ForEach-Object {            
+            $allprocess | Where-Object { $_.ParentProcessID -eq $ID } | ForEach-Object {            
                 Indent $i            
                 '{0}{1} {2}' -f $Indent, $_.ProcessID, ($_.Name -split "\.")[0]            
                 $i++            

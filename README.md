@@ -12,7 +12,13 @@ Alert/Abnormal Behavior -> Artifact Collection -> Investigation -> confirmed inc
 When EDR+SIEM are not in play for an incident all comes to adhoc IR this project is made to enable analysts to automate the common part of it that would be:  
     Endpoint collection of logs and artifacts of interest.  
     Endpoint Containment.  
-    Endpoint Remediation/Eradication.  
+    Endpoint Remediation/Eradication.
+
+For Help
+Get-Help- .\Invoke-SIR.ps1 -Full
+
+For examples
+Get-Help .\Invoke-SIR.ps1 -Examples
 
 ## Invoke-SecurityIncidentResponse  
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
@@ -20,7 +26,7 @@ When EDR+SIEM are not in play for an incident all comes to adhoc IR this project
     3 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).  
     Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.  
 
-## Invoke-ArtifactsCollection
+## Invoke-InformationGathering.ps1
 
 ### Detection/Investigation/Artifacts Collection  
     Disk:  

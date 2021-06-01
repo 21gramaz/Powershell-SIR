@@ -1,6 +1,100 @@
-# Executes Basic checks for the target host/hosts.
-#
-#[CmdletBinding(DefaultParameterSetName = "Containment")]
+<#
+  .SYNOPSIS
+  Invoke-SIR its a powershell script that aim to help in Investigation (information and artifact collection), containment and remediation part of Security Incident Response for Windows. Live response script.
+
+  .DESCRIPTION
+  Invoke-SIR.ps1 is responsible to determine which of the other 3 child scripts will be called, depending which stage of SIR you are in, these three other scripts are:
+  1 - Invoke-InformationGathering.ps1 it is responsible to gather information using third party modules or own modules, the scripts/modules below are used:
+        -Get-OSDetails.ps1 - Most of the commands used here are simple commands to list system information or to call third party modules:
+            *AutoRuns Module - https://github.com/LeeHolmes/AutoRuns - Mostly do the same as autoruns.exe part of sysinternal tools, to find persistence and execution techiniques.
+            *PowerForensics Module - https://powerforensics.readthedocs.io/en/latest/ - Used the DLL to import-modules and get MFT records, but it owns a very wide range of forensic CMDlets.
+            *Get-PortProxy.ps1 - https://www.powershellgallery.com/packages/NetshUtils/0.1.447696-alpha/Content/public%5Cinterface%5Cportproxy%5CGet-PortProxy.ps1 - Used to bring Port-Proxy information, when people are pivoting in the host this kind of configuration might be used to routing.
+            *Show-ProcessTree.ps1 - https://p0w3rsh3ll.wordpress.com/ - Used to review process tree graphically (easier than have a list of process to find what is suspicious)
+  2 - Invoke-Contaiment.ps1 is responsible to help to contain the incident with the following functions:
+        -Host isolation/release. (Implmented)
+        -Process termination. (Not Implemented)
+        -Terminate user session. (Not Implemented)
+        -Restart service. (Not Implemented)
+  3 - Invoke-Remediation.ps1 - not implemented
+        -Service Removal.  
+        -WMI persistence removal.  
+        -Task Scheduler removal.  
+        -User removal.  
+        -Remove endpoint Firewall Rule/Proxy.  
+        -Remove list of files by path+name or hash.  
+        -Remove Application (Maybe)  
+        -Remove browser extenstions  (Maybe)  
+  To learn more please go to https://github.com/21gramaz/Powershell-security-incident-response-helpers
+
+  .PARAMETER Collection
+  This parameter sets the script to use the ParameterSet Collection that will include the following paramenters:
+    -CollectionOutputPath
+    -CollectionType
+    -ComputerName
+    -UseCreds
+    -UseSession
+
+  .PARAMETER Containment
+   This parameter sets the script to use the ParameterSet Contaiment that will include the following paramenters:
+    -ContainmentType
+    -ComputerName
+    -UseCreds
+    -UseSession
+
+  .PARAMETER Remediation
+  This parameter sets the script to use the ParameterSet Remediation. (Not implemented)
+
+  .PARAMETER DownloadLatestThirdPartyModules
+  Used to update the following third party modules:
+    -PowerForensicsV2
+    -Autoruns
+
+  .PARAMETER CollectionType
+  Used to set the collection for one of these three options:
+    -Disk. (Implemented)
+    -Memory. (Not Implemented)
+    -All. (Not Implemented)
+
+  .PARAMETER ContainmentType
+  Used to update the following third party modules:
+    -NetworkIsolation.  (Implemented)
+    -NetworkRelease.  (Implemented)
+
+  .PARAMETER ComputerName
+  Remote computer in which you want to run the script, if not set it will run in the local system.
+
+  .PARAMETER UseCreds
+  If the current powershell session does not have administrator privileges or does not have winrm permission, you can use username and password to do it. Once set the script will popup a window get-credential. If not set the script will try to run the script with the session already given permissions.
+
+  .PARAMETER UseSessions
+  If there is a session opened to the system you can specify the ComputerName and -UseSession, the script will pick sessions with name SIR (all PSSessions opened by this script are named SIRN where N is a incremental number example: SIR1) in it.
+
+  .INPUTS
+  You can pipe system names/IPs in which you want to run the script.
+
+  .OUTPUTS
+  If you are using the Collection parameter all the information gathered and the transcription of the script will be saved in $PSScriptRoot\Collection\Reports.
+  If you are using Contaiment/Remediation paramenter the output would be the transcription saved in $PSScriptRoot\Collection\Reports
+
+  .EXAMPLE
+  .
+  Network Isolation for host 192.168.168.156 using username+password.
+  PS> .\Invoke-SIR.ps1 -Containment -ContainmentType NetworkIsolation -ComputerName 192.168.168.156 -UseCreds
+
+  Network release will work remotely just with -UseSessions Parameter, because it uses an already defined session as new sessions will not be allowed.
+  PS> .\Invoke-SIR.ps1 -Containment -ContainmentType NetworkRelease -ComputerName 192.168.168.156 -UseSessions
+
+  Network Isolation for localhost
+  PS> .\Invoke-SIR.ps1 -Containment -ContainmentType NetworkIsolation
+
+  .EXAMPLE
+  .
+  Collects information from a remote computer using the current powershell session permissions.
+  PS> .\Invoke-SIR.ps1 -Collection -CollectionType Disk -ComputerName 192.168.168.156
+
+  Collects information from the local system using the current powershell session permissions.
+  PS> .\Invoke-SIR.ps1 -Collection -CollectionType Disk
+#>
 param (
     [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
     [Parameter(ParameterSetName = "Collection")]
@@ -41,12 +135,12 @@ param (
     [Parameter(ParameterSetName = "Collection")]
     [Parameter(ParameterSetName = "Contaiment")]
     [switch]
-    $usecreds,
+    $UseCreds,
 
     [Parameter(ParameterSetName = "Collection")]
     [Parameter(ParameterSetName = "Contaiment")]
     [switch]
-    $usesessions,
+    $UseSessions,
 
     [Parameter(Mandatory = $true, ParameterSetName = "UpdateModules")]
     [switch]
@@ -145,7 +239,7 @@ begin {
         }
     }
     function Get-CleanedUp{
-        if ($usecreds) {
+        if ($UseCreds) {
             foreach ($computer in $ComputerName) {
                 write-host "[*][$(Get-TimeStamp)] Initiating Powershell clean up sessions with password" -ForegroundColor Yellow
                 $sessionName = "SIR" + $counter
@@ -153,7 +247,7 @@ begin {
                 $counter++
             }
         }
-        elseif ($usesessions) {
+        elseif ($UseSessions) {
             write-host "[*][$(Get-TimeStamp)] Not supported, please remove C:\Users\Public\PowerForensicsv2.dll mannually" -ForegroundColor Yellow
         }
         else {

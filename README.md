@@ -1,7 +1,7 @@
 # Powershell security incident response helpers
 
 Timelining an incident:  
-Incident -> Security Alert/Abnormal Behavior -> Incident Response Steps -> Forensicf
+Incident -> Security Alert/Abnormal Behavior -> Incident Response Steps -> Forensic
 
 Usually incident reponse will comes to this:  
 Alert/Abnormal Behavior -> Someone find something wrong and turn off the server/desktop, lose all the memory and temporary files that would be crucial for further investigation -> As there is no way to determine what have been done the recommendation would be rebuild the server and reset all users that had any information/logged there.
@@ -43,7 +43,7 @@ When EDR+SIEM are not in play for an incident all comes to adhoc IR this project
     3 - Terminate user session.  
     4 - Restart service.  
 
-## Invoke-Remediation  
+## Invoke-Remediation  (Not implemented yet)
 ### Remediation/Eradication  
     1 - Service Removal.  
     2 - WMI persistence removal.  
@@ -56,6 +56,8 @@ When EDR+SIEM are not in play for an incident all comes to adhoc IR this project
 
 
 References:
-https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/
-https://github.com/davehull/Kansa/tree/master/Modules
-https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershell_3393
+https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/  
+https://github.com/davehull/Kansa/tree/master/Modules  
+https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershell_3393  
+https://powerforensics.readthedocs.io/en/latest/  
+https://github.com/LeeHolmes/AutoRuns  

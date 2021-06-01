@@ -22,37 +22,37 @@ Invoke-SecurityIncidentResponse
 
 Invoke-ArtifactsCollection
 
-Detection/Investigation/Artifacts Collection
+Detection/Investigation/Artifacts Collection  
     Disk:  
-    1 - Collect windows logs from winevt.
-    2 - Check IIS instalation paths and collect logs.
-    3 - Services Runing
-    4 - List of processs (process tree and command lines and path of the image)
-    5 - Ports open with repectives process
-    6 - Registry (startup locations)
-    7 - Firewall rules/Firewall logs
-    8 - Enumerate local users
-    9 - DNS Cache
-    10 - User Sessions.
-    11 - Collect Number of hashed passwords cached allowed in lsass. 
+    1 - Collect windows logs from winevt.  
+    2 - Check IIS instalation paths and collect logs. 
+    3 - Services Runing  
+    4 - List of processs (process tree and command lines and path of the image)  
+    5 - Ports open with repectives process  
+    6 - Registry (startup locations)  
+    7 - Firewall rules/Firewall logs  
+    8 - Enumerate local users  
+    9 - DNS Cache  
+    10 - User Sessions.  
+    11 - Collect Number of hashed passwords cached allowed in lsass.  
 
-Invoke-Containment
-Containment
-    1 - Host isolation.
-    2 - Process termination.
-    3 - Terminate user session.
-    4 - Restart service.
+Invoke-Containment  
+Containment  
+    1 - Host isolation.  
+    2 - Process termination.  
+    3 - Terminate user session.  
+    4 - Restart service.  
 
-Invoke-Remediation
-Remediation/Eradication
-    1 - Service Removal.
-    2 - WMI persistence removal.
-    3 - Task Scheduler removal.
-    4 - User removal.
-    5 - Remove endpoint Firewall Rule/Proxy.
-    6 - Remove list of files by path+name or hash.
-    7 - Remove Application (Maybe)
-    8 - Remove browser extenstions  (Maybe)
+Invoke-Remediation  
+Remediation/Eradication  
+    1 - Service Removal.  
+    2 - WMI persistence removal.  
+    3 - Task Scheduler removal.  
+    4 - User removal.  
+    5 - Remove endpoint Firewall Rule/Proxy.  
+    6 - Remove list of files by path+name or hash.  
+    7 - Remove Application (Maybe)  
+    8 - Remove browser extenstions  (Maybe)  
 
 
 References:

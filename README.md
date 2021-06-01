@@ -11,19 +11,19 @@ Alert/Abnormal Behavior -> Artifact Collection -> Investigation -> confirmed inc
 
 When EDR+SIEM are not in play for an incident all comes to adhoc IR this project is made to enable analysts to automate the common part of it that would be:
     Endpoint collection of logs and artifacts of interest.
-    Endpoint Containment.
-    Endpoint Remediation/Eradication.    
+    Endpoint Containment.  
+    Endpoint Remediation/Eradication.     
 
 Invoke-SecurityIncidentResponse
-    1 - Check OS version, CPU architeture, Hostname, DNS resolution.
-    2 - Powershell Version.
-    3 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).
-    Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.
+    1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
+    2 - Powershell Version.  
+    3 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).  
+    Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.  
 
 Invoke-ArtifactsCollection
 
 Detection/Investigation/Artifacts Collection
-    Disk:
+    Disk:  
     1 - Collect windows logs from winevt.
     2 - Check IIS instalation paths and collect logs.
     3 - Services Runing

@@ -1125,40 +1125,61 @@ Begin {
                         AsByteStream = [switch]::Present
                     }
                 }
-                # LNK files or direct executable
-                if (Test-Path -Path "$($env:systemdrive)\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup" -PathType Container) {
-                    $Wsh = New-Object -ComObject 'WScript.Shell'
-                    Get-ChildItem -Path "$($env:systemdrive)\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup" |ForEach-Object {
-                        $File = $_
-                        $header = (Get-Content -Path $($_.FullName) @HT -ReadCount 1 -TotalCount 2) -as [string]
-                        Switch ($header) {
-                            '77 90' {
-                                [pscustomobject]@{
-                                    Path = "$($env:systemdrive)\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
-                                    Item = $File.Name
-                                    Value = $File.FullName
-                                    Category = 'Logon'
-                                }
-                                break
-                            }
-                            '76 0' {
-                                $shortcut = $Wsh.CreateShortcut($File.FullName)
-                                [pscustomobject]@{
-                                    Path = "$($env:systemdrive)\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
-                                    Item = $File.Name
-                                    Value = "$($shortcut.TargetPath) $($shortcut.Arguments)"
-                                    Category = 'Logon'
-                                }
-                                break
 
-                            }
-                            # Anything else: not lnk and not PE
-                            default {
-                                [pscustomobject]@{
-                                    Path = "$($env:systemdrive)\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
-                                    Item = $File.Name
-                                    Value = $File.FullName
-                                    Category = 'Logon'
+                # HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders
+                # TODO: iterate on 'Common Startup','Common AltStartup'
+                # Read first 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders\Common Startup' and follow the value
+                # LNK files or direct executable
+                'Common Startup','Common AltStartup' |
+                ForEach-Object -Begin {
+                    $key = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+                } -Process {
+                    $n = $PSItem
+                    if (Test-Path -Path $key -PathType Container) {
+                        # Show what the Startup value contains (could be a file)
+                        Get-RegValue -Path $key -Name $PSItem @Category
+                        $USF = $null
+                        # If it's a folder, explore its content
+                        $USF = (Get-ItemProperty -Path $key -Name $PSItem -ErrorAction SilentlyContinue)."$($PSItem)"
+                        if ($USF) {
+                            if (Test-Path -Path "$($USF)") {
+                                $Wsh = New-Object -ComObject 'WScript.Shell'
+                                Get-ChildItem -Path "$($USF)" -Force -Exclude 'desktop.ini' |
+                                ForEach-Object {
+                                    $File = $_
+                                    if ($File -is [System.IO.FileInfo]) {
+                                        $header = (Get-Content -Path $($_.FullName) @HT -ReadCount 1 -TotalCount 2) -as [string]
+                                        Switch ($header) {
+                                            '77 90' {
+                                                [pscustomobject]@{
+                                                    Path = "$($key)\$($n)"
+                                                    Item = $File.Name
+                                                    Value = $File.FullName
+                                                    Category = 'Logon'
+                                                }
+                                                break
+                                            }
+                                            '76 0' {
+                                                $shortcut = $Wsh.CreateShortcut($File.FullName)
+                                                [pscustomobject]@{
+                                                    Path = "$($key)\$($n)"
+                                                    Item = $File.Name
+                                                    Value = "$($shortcut.TargetPath) $($shortcut.Arguments)"
+                                                    Category = 'Logon'
+                                                }
+                                                break
+                                            }
+                                            # Anything else: not lnk and not PE
+                                            default {
+                                                [pscustomobject]@{
+                                                    Path = "$($key)\$($n)"
+                                                    Item = $File.Name
+                                                    Value = $File.FullName
+                                                    Category = 'Logon'
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1187,52 +1208,70 @@ Begin {
                 #region User Logon
                 $Users |
                 ForEach-Object {
-                $Hive = $_['Hive']
-                # Local GPO scripts
-                'Startup','Shutdown','Logon','Logoff' | ForEach-Object -Process {
-                    $key = "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\$($_)"
-                    if (Test-Path -Path $key) {
-                        (Get-Item -Path $key).GetSubKeyNames() | ForEach-Object -Process {
-                            $subkey = (Join-Path -Path $key -ChildPath $_)
-                            (Get-Item -Path $subkey).GetSubKeyNames() | ForEach-Object -Process {
-                                # (Join-Path -Path $subkey -ChildPath $_)
-                                Get-RegValue -Path (Join-Path -Path $subkey -ChildPath $_) -Name 'script' @Category
+                    $Hive = $_['Hive']
+                    # Local GPO scripts
+                    'Startup','Shutdown','Logon','Logoff' |
+                    ForEach-Object -Process {
+                        $key = "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\$($_)"
+                        if (Test-Path -Path $key) {
+                            (Get-Item -Path $key).GetSubKeyNames() |
+                            ForEach-Object -Process {
+                                $subkey = (Join-Path -Path $key -ChildPath $_)
+                                (Get-Item -Path $subkey).GetSubKeyNames() |
+                                ForEach-Object -Process {
+                                    # (Join-Path -Path $subkey -ChildPath $_)
+                                    Get-RegValue -Path (Join-Path -Path $subkey -ChildPath $_) -Name 'script' @Category
+                                }
                             }
-
                         }
                     }
-                }
 
-                # UserInitMprLogonScript
-                if (Test-Path -Path "$($Hive)\Environment" -PathType Container) {
-                    Get-RegValue -Path "$($Hive)\Environment" -Name 'UserInitMprLogonScript' @Category
-                }
+                    # UserInitMprLogonScript
+                    if (Test-Path -Path "$($Hive)\Environment" -PathType Container) {
+                        Get-RegValue -Path "$($Hive)\Environment" -Name 'UserInitMprLogonScript' @Category
+                    }
 
-                # Shell override by GPO
-                Get-RegValue -Path "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name 'Shell' @Category
+                    # Shell override by GPO
+                    Get-RegValue -Path "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name 'Shell' @Category
 
-                Get-RegValue -Path "$($Hive)\Software\Microsoft\Windows NT\CurrentVersion\Windows" -Name 'Load' @Category
-                Get-RegValue -Path "$($Hive)\Software\Microsoft\Windows NT\CurrentVersion\Windows" -Name 'Run' @Category
+                    Get-RegValue -Path "$($Hive)\Software\Microsoft\Windows NT\CurrentVersion\Windows" -Name 'Load' @Category
+                    Get-RegValue -Path "$($Hive)\Software\Microsoft\Windows NT\CurrentVersion\Windows" -Name 'Run' @Category
 
-                # Run by GPO
-                Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run" -Name '*' @Category
+                    # Run by GPO
+                    Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run" -Name '*' @Category
 
-                # Run
-                $null,'Wow6432Node' | ForEach-Object {
-                    Get-RegValue -Path "$($Hive)\Software\$($_)\Microsoft\Windows\CurrentVersion\Run" -Name '*' @Category
-                }
+                    # Run
+                    $null,'Wow6432Node' | ForEach-Object {
+                        Get-RegValue -Path "$($Hive)\Software\$($_)\Microsoft\Windows\CurrentVersion\Run" -Name '*' @Category
+                    }
 
-                # RunOnce
-                $null,'Wow6432Node' | ForEach-Object {
-                    Get-RegValue -Path "$($Hive)\Software\$($_)\Microsoft\Windows\CurrentVersion\RunOnce" -Name '*' @Category
-                }
+                    # RunOnce
+                    $null,'Wow6432Node' | ForEach-Object {
+                        Get-RegValue -Path "$($Hive)\Software\$($_)\Microsoft\Windows\CurrentVersion\RunOnce" -Name '*' @Category
+                    }
 
-                # RunOnceEx
-                $null,'Wow6432Node' | ForEach-Object {
-                    Get-RegValue -Path "$($Hive)\Software\$($_)\Microsoft\Windows\CurrentVersion\RunOnceEx" -Name '*' @Category
-                }
-                $null,'Wow6432Node' | Foreach-Object {
-                    $key = "$($Hive)\SOFTWARE\$($_)\Microsoft\Windows\CurrentVersion\RunOnceEx"
+                    # RunOnceEx
+                    $null,'Wow6432Node' | ForEach-Object {
+                        Get-RegValue -Path "$($Hive)\Software\$($_)\Microsoft\Windows\CurrentVersion\RunOnceEx" -Name '*' @Category
+                    }
+                    $null,'Wow6432Node' |
+                    Foreach-Object {
+                        $key = "$($Hive)\SOFTWARE\$($_)\Microsoft\Windows\CurrentVersion\RunOnceEx"
+                        if (Test-Path -Path $key -PathType Container) {
+                            (Get-Item -Path $key).GetSubKeyNames() |
+                            ForEach-Object -Process {
+                                Get-RegValue -Path "$key\$($_)" -Name '*' @Category
+                                if (Test-Path -Path "$key\$($_)\Depend" -PathType Container) {
+                                    Get-RegValue -Path "$key\$($_)\Depend" -Name '*' @Category
+                                }
+                            }
+                        }
+                    }
+
+                    # Restored as of 13.90
+                    Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\Runonce" -Name '*' @Category
+                    Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\RunonceEx" -Name '*' @Category
+                    $key = "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\RunonceEx"
                     if (Test-Path -Path $key -PathType Container) {
                         (Get-Item -Path $key).GetSubKeyNames() |
                         ForEach-Object -Process {
@@ -1242,86 +1281,83 @@ Begin {
                             }
                         }
                     }
-                }
+                    Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\Run" -Name '*' @Category
 
-                # Restored as of 13.90
-                Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\Runonce" -Name '*' @Category
-                Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\RunonceEx" -Name '*' @Category
-                $key = "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\RunonceEx"
-                if (Test-Path -Path $key -PathType Container) {
-                    (Get-Item -Path $key).GetSubKeyNames() |
-                    ForEach-Object -Process {
-                        Get-RegValue -Path "$key\$($_)" -Name '*' @Category
-                        if (Test-Path -Path "$key\$($_)\Depend" -PathType Container) {
-                            Get-RegValue -Path "$key\$($_)\Depend" -Name '*' @Category
+                    # Scan the User Shell Folders key and its startup and AltStartup non expanded value
+                    'Startup','AltStartup' |
+                    ForEach-Object -Begin {
+                        $Wsh = New-Object -ComObject 'WScript.Shell'
+                    } -Process {
+                        if (Test-Path -Path $key -PathType Container) {
+                            $key = "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
+                            $regKey = '{0}\{1}' -f ($key -replace  ':','' -replace 'HKU','HKEY_USERS'),$PSItem
+                            if (Get-ItemProperty -Path $key -Name $PSItem -ErrorAction SilentlyContinue) {
+                                [pscustomobject]@{
+                                    Path = "$($key)"
+                                    Item = $PSItem
+                                    Value = $Wsh.RegRead($regKey)
+                                    Category = 'Logon'
+                                }
+                            }
                         }
                     }
-                }
-                Get-RegValue -Path "$($Hive)\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\Install\Software\Microsoft\Windows\CurrentVersion\Run" -Name '*' @Category
 
-                # Scan the User Shell Folders key and its startup non expanded value
-                $key = "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
-                if (Test-Path -Path $key -PathType Container) {
-                    $Wsh = New-Object -ComObject 'WScript.Shell'
-                    $regKey = '{0}\Startup' -f ($key -replace  ':','' -replace 'HKU','HKEY_USERS')
-                    [pscustomobject]@{
-                        Path = "$($key)"
-                        Item = 'Startup'
-                        Value = $Wsh.RegRead($regKey)
-                        Category = 'Logon'
-                    }
-                }
-                # Scan the Shell folders key and its startup value if they exist
-                $key = "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
-                if (Test-Path -Path $key -PathType Container) {
-                    # Show what the Startup value contains (could be a file)
-                    Get-RegValue -Path $key -Name 'Startup' @Category
-                    $USF = $null
-                    # If it's a folder, explore its content
-                    $USF = (Get-ItemProperty -Path $key -Name 'Startup' -ErrorAction SilentlyContinue).'StartUp'
-                    if ($USF) {
-                        if (Test-Path -Path "$($USF)") {
-                            $Wsh = New-Object -ComObject 'WScript.Shell'
-                            Get-ChildItem -Path "$($USF)" -Force -Exclude 'desktop.ini' |
-                            ForEach-Object {
-                                $File = $_
-                                $header = (Get-Content -Path $($_.FullName) @HT -ReadCount 1 -TotalCount 2) -as [string]
-                                Switch ($header) {
-                                    '77 90' {
-                                        [pscustomobject]@{
-                                            Path = "$($USF)"
-                                            Item = $File.Name
-                                            Value = $File.FullName
-                                            Category = 'Logon'
-                                        }
-                                        break
-                                    }
-                                    '76 0' {
-                                        $shortcut = $Wsh.CreateShortcut($File.FullName)
-                                        [pscustomobject]@{
-                                            Path = "$($USF)"
-                                            Item = $File.Name
-                                            Value = "$($shortcut.TargetPath) $($shortcut.Arguments)"
-                                            Category = 'Logon'
-                                        }
-                                        break
-
-                                    }
-                                    # Anything else: not lnk and not PE
-                                    default {
-                                        [pscustomobject]@{
-                                            Path = "$($USF)"
-                                            Item = $File.Name
-                                            Value = $File.FullName
-                                            Category = 'Logon'
+                    # Scan the Shell folders key and its startup value if they exist
+                    'Startup','AltStartup' |
+                    ForEach-Object -Begin {
+                        $key = "$($Hive)\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"
+                    } -Process {
+                        $n = $PSItem
+                        if (Test-Path -Path $key -PathType Container) {
+                            # Show what the Startup value contains (could be a file)
+                            Get-RegValue -Path $key -Name $PSItem @Category
+                            $USF = $null
+                            # If it's a folder, explore its content
+                            $USF = (Get-ItemProperty -Path $key -Name $PSItem -ErrorAction SilentlyContinue)."$($PSItem)"
+                            if ($USF) {
+                                if (Test-Path -Path "$($USF)") {
+                                    $Wsh = New-Object -ComObject 'WScript.Shell'
+                                    Get-ChildItem -Path "$($USF)" -Force -Exclude 'desktop.ini' |
+                                    ForEach-Object {
+                                        $File = $_
+                                        if ($File -is [System.IO.FileInfo]) {
+                                            $header = (Get-Content -Path $($_.FullName) @HT -ReadCount 1 -TotalCount 2) -as [string]
+                                            Switch ($header) {
+                                                '77 90' {
+                                                    [pscustomobject]@{
+                                                        Path = "$($key)\$($n)"
+                                                        Item = $File.Name
+                                                        Value = $File.FullName
+                                                        Category = 'Logon'
+                                                    }
+                                                    break
+                                                }
+                                                '76 0' {
+                                                    $shortcut = $Wsh.CreateShortcut($File.FullName)
+                                                    [pscustomobject]@{
+                                                        Path = "$($key)\$($n)"
+                                                        Item = $File.Name
+                                                        Value = "$($shortcut.TargetPath) $($shortcut.Arguments)"
+                                                        Category = 'Logon'
+                                                    }
+                                                    break
+                                                }
+                                                # Anything else: not lnk and not PE
+                                                default {
+                                                    [pscustomobject]@{
+                                                        Path = "$($key)\$($n)"
+                                                        Item = $File.Name
+                                                        Value = $File.FullName
+                                                        Category = 'Logon'
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
-
                 }
                 #endregion User Logon
 
@@ -2401,7 +2437,8 @@ Begin {
                                             break
                                     }
                                     # C:\ProgramData\
-                                    '^[A-Za-z]:\\ProgramData\\' {
+                                    # '^[A-Za-z]:\\ProgramData\\' {
+                                    '^[A-Za-z]:\\[pP][rR][oO][gG][rR][aA][mM][dD][aA][tT][aA]\\(?<File>.+\.[A-Za-z0-9]{1,})' {
                                         Join-Path -Path 'C:\ProgramData' -ChildPath (
                                             @([regex]'C:\\[pP][rR][oO][gG][rR][aA][mM][dD][aA][tT][aA]\\(?<File>.+\.[A-Za-z0-9]{1,})').Matches($_) |
                                             Select-Object -Expand Groups | Select-Object -Last 1 | Select-Object -ExpandProperty Value
@@ -3035,8 +3072,8 @@ End {
 # SIG # Begin signature block
 # MIIZmQYJKoZIhvcNAQcCoIIZijCCGYYCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCD4M82Tp83Ok4vW
-# 8GlWlEbLEPSqXMgE9/O8IYdfd8OOJqCCFIIwggT+MIID5qADAgECAhANQkrgvjqI
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCxdjr6qGTO40BL
+# 293Ng1YP4aGXJnJG7ugPmKKL/YGFxqCCFIIwggT+MIID5qADAgECAhANQkrgvjqI
 # /2BAIc4UAPDdMA0GCSqGSIb3DQEBCwUAMHIxCzAJBgNVBAYTAlVTMRUwEwYDVQQK
 # EwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5jb20xMTAvBgNV
 # BAMTKERpZ2lDZXJ0IFNIQTIgQXNzdXJlZCBJRCBUaW1lc3RhbXBpbmcgQ0EwHhcN
@@ -3151,23 +3188,23 @@ End {
 # SEEyIEFzc3VyZWQgSUQgQ29kZSBTaWduaW5nIENBAhADtr37N6awsT2P3icNRhOy
 # MA0GCWCGSAFlAwQCAQUAoIGEMBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJ
 # KoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQB
-# gjcCARUwLwYJKoZIhvcNAQkEMSIEIDnF35/jXW5reQtZDOLhDXsFDuxo7UxStVL1
-# unGsVXDrMA0GCSqGSIb3DQEBAQUABIIBAC5ysm68cdu+DHntpRFRMU9imBne/yOZ
-# J/OzZHmleLZV4Vk4sI0LPI9+5pfupTpZ8q2oQrjd13a4x+H0vLtD8CBQFHMO+FAb
-# gOM72LGzFB3GQBvym0plTwta7DUzu+VY1wz0RikZacSHp+Gp3Mh6sWku/Gkv72mk
-# t76hWkeaSl7qBZjxbwJiUeJ7q63TgjZ/DtZ4LoEBZkYlH/Imf9pmfuviL0UfugTn
-# cDAswDbFxS7XU5Mfh9ffkq0Hdh2GNuhueAXN7afiYgH65OdoZZjR/BXwEjbma3nH
-# m2wq1DS3U6FXFGxx6QcJ3YGzyr0HhsVGUc7ksx1ozIZ5oisbYjBaDG+hggIwMIIC
+# gjcCARUwLwYJKoZIhvcNAQkEMSIEIMuyS5Xiu7X7qr5GguYN6BIyNu3mXJBoFLdB
+# dEjIPLEkMA0GCSqGSIb3DQEBAQUABIIBAKjTkhhmqo/KDV9iaq7xSYJ6aSzvGTih
+# yEpAq5NijbWryRfcUTXCTGV/f37VYpX/aoYCBUXEzdTbazxK0LGET9C0TW13EsEw
+# 6ge+A53uuyDHLzDFFylq7rugfxjhsT7z6pRx5FwZQYAFqPUh2yfAfDDTLCNnh8Ex
+# 0XFZJB6sL0MAWxWnpkNVFuo8nea9Z4gEsoriijyT6bAeGZmhphWyTjn//dMqtWii
+# EOshtZg7E7GejUqUPj8sEA2cpCktqV5PmfK390emeMp9HMVpDRY38HPB1Pq6At5O
+# r/MR5e0XPF213E32GgIet6kVRBTKArfByxH8b0pKUc/l5iZLMA+/p9ihggIwMIIC
 # LAYJKoZIhvcNAQkGMYICHTCCAhkCAQEwgYYwcjELMAkGA1UEBhMCVVMxFTATBgNV
 # BAoTDERpZ2lDZXJ0IEluYzEZMBcGA1UECxMQd3d3LmRpZ2ljZXJ0LmNvbTExMC8G
 # A1UEAxMoRGlnaUNlcnQgU0hBMiBBc3N1cmVkIElEIFRpbWVzdGFtcGluZyBDQQIQ
 # DUJK4L46iP9gQCHOFADw3TANBglghkgBZQMEAgEFAKBpMBgGCSqGSIb3DQEJAzEL
-# BgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTIxMDQxMDE2NDQ1MlowLwYJKoZI
-# hvcNAQkEMSIEIBD9RcbpUsORiSTv6ed+8y1EZovWArRoX9pk4TFjAcVgMA0GCSqG
-# SIb3DQEBAQUABIIBAD08+8mIwOdG5UGNHIWn2xUBJTtb2n+H4lJDlmPWjh2UMM8S
-# WM6n211Lj0F202EnzoEliMY9/iFBVissnlPVtBd8bi2+/608X6NxvdWRLEwZhZsF
-# YQorLldpFN44XetBVLKia8VITWB3EiphDajtrYlfE44UoCBuAapAEwcmZTY1vHAl
-# Irq5y4/145pKUmyhoqlwnZtGZn+PHUDJ83TvK5rrSl/OJJOQu2+wyNKCO93XOrHn
-# E7o/9psOSULKUTf0hlVkerSs0xLJBBWtBY/xq9aWJtknzgZ2+DrJ83entt9CRfXj
-# M7/7pnQue7DwR6FnOQCAesn3j9qKmfHGgSVL0D8=
+# BgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTIxMDUyMjE1NDkzOFowLwYJKoZI
+# hvcNAQkEMSIEIO6S8u/XJR0bpZary1g0hS/Kr4Agx6Ms/8F4z/W1VqSNMA0GCSqG
+# SIb3DQEBAQUABIIBAEQcUjMHAReN5DwrlV3zp0LBRY5YgQvkTwH2rRHZ4HSElHJ+
+# uKQYGW+5sy21btfUuVuKXdVnByjh17DS7m+pcgOtWvna+41zZy6bSC+ASWYN/xAD
+# FEdZ2fPU4Grm07MbQR3f5w4JYKZ1ZEfDiaY/4w+5EqkdRQBzUS3jgNve7WhDbyWz
+# L5ze93qrphau5gn1P6hKal9wosneypPNALNOMl8rNPQHw3i1+Y6kwg/712ncpwQt
+# XteVExFfPtNCLhoBcXI6i4fCyBnAwoTe4EpOQu8wLvNRyLB9v8kdThEweQMxpI2z
+# /JyPoZFNRswlS9zwywXIjzxHePy0LA8aX1yPn58=
 # SIG # End signature block

@@ -1,8 +1,5 @@
 # Executes Basic checks for the target host/hosts.
 #
-
-
-
 #[CmdletBinding(DefaultParameterSetName = "Containment")]
 param (
     [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
@@ -103,6 +100,74 @@ begin {
             return $hostinfo1
         }
     }
+    function Get-ModuleAutoruns{
+        write-host "[+][$(Get-TimeStamp)] Checking if AutoRuns modules is installed." -ForegroundColor Green
+        if(Test-Path -Path "$PSScriptRoot\Collection\AutoRuns"){
+            do{
+                write-host "[+][$(Get-TimeStamp)] Removing previous installed version" -ForegroundColor Green
+                Remove-Item -Path "$PSScriptRoot\Collection\AutoRuns" -Force -Recurse -ErrorAction Continue 
+            }while (Test-Path -Path "$PSScriptRoot\Collection\AutoRuns")
+
+            write-host "[+][$(Get-TimeStamp)] Downloading latest Autoruns Module" -ForegroundColor Green
+            Save-Module -Name AutoRuns -Repository PSGallery -Path "$PSScriptRoot\Collection\"
+            $AutoRunsModulesPath=Get-ChildItem -Path "$PSScriptRoot\Collection\Autoruns\" -Recurse Autoruns.psm1
+            $AutoRunPS1=$($AutoRunsModulesPath.DirectoryName) + "\AutoRuns.ps1"
+            copy-item $AutoRunsModulesPath.FullName -Destination $AutoRunPS1
+            if(Test-Path -Path "$PSScriptRoot\Collection\AutoRuns"){
+                write-host "[+][$(Get-TimeStamp)] Autoruns Downloaded" -ForegroundColor Green
+            }
+        }
+        else{
+            write-host "[+][$(Get-TimeStamp)] Downloading latest Autoruns Module" -ForegroundColor Green
+            Save-Module -Name AutoRuns -Repository PSGallery -Path "$PSScriptRoot\Collection\"
+        }
+    }
+    function Get-ModulePowerForensicsv2{
+        write-host "[+][$(Get-TimeStamp)] Checking if PowerForensicsv2 modules is installed." -ForegroundColor Green
+        if(Test-Path -Path "$PSScriptRoot\Collection\PowerForensicsv2"){
+            do{
+                write-host "[+][$(Get-TimeStamp)] Removing previous installed version" -ForegroundColor Green
+                Remove-Item -Path "$PSScriptRoot\Collection\PowerForensicsv2" -Force -Recurse -ErrorAction Continue 
+            }while (Test-Path -Path "$PSScriptRoot\Collection\PowerForensicsv2")
+
+            write-host "[+][$(Get-TimeStamp)] Downloading latest PowerForensicsv2 Module" -ForegroundColor Green
+            Save-Module -Name PowerForensicsv2 -Repository PSGallery -Path "$PSScriptRoot\Collection\"
+            #$PowerForensicsv2ModulesPath=Get-ChildItem -Path "$PSScriptRoot\Collection\PowerForensicsv2\" -Recurse Autoruns.psm1
+            #$AutoRunPS1=$($PowerForensicsv2ModulesPath.DirectoryName) + "\AutoRuns.ps1"
+            #copy-item $PowerForensicsv2ModulesPath.FullName -Destination $AutoRunPS1
+            if(Test-Path -Path "$PSScriptRoot\Collection\PowerForensicsv2"){
+                write-host "[+][$(Get-TimeStamp)] PowerForensicsv2 Downloaded" -ForegroundColor Green
+            }
+        }
+        else{
+            write-host "[+][$(Get-TimeStamp)] Downloading latest PowerForensicsv2 Module" -ForegroundColor Green
+            Save-Module -Name PowerForensicsv2 -Repository PSGallery -Path "$PSScriptRoot\Collection\"
+        }
+    }
+    function Get-CleanedUp{
+        if ($usecreds) {
+            foreach ($computer in $ComputerName) {
+                write-host "[*][$(Get-TimeStamp)] Initiating Powershell clean up sessions with password" -ForegroundColor Yellow
+                $sessionName = "SIR" + $counter
+                $cleanupsessions += New-PSSession $computer -Credential $creds -Name $sessionName -ErrorAction Stop
+                $counter++
+            }
+        }
+        elseif ($usesessions) {
+            write-host "[*][$(Get-TimeStamp)] Not supported, please remove C:\Users\Public\PowerForensicsv2.dll mannually" -ForegroundColor Yellow
+        }
+        else {
+            write-host "[*][$(Get-TimeStamp)] Initiating Powershell clean up sessions with existing powershell console privileges" -ForegroundColor Yellow
+            foreach ($computer in $ComputerName) {
+                $sessionName = "SIR" + $counter
+                $cleanupsessions += New-PSSession $computer -Name $sessionName -ErrorAction Stop
+                $counter++
+            }
+        }
+        Invoke-Command -Session $cleanupsessions -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Remove-Item -Force -Path  $RemoteForensicsv2Path -ErrorAction Continue; if( $(Test-Path $RemoteForensicsv2Path) -eq $false ){ function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }; write-host "[*][$(Get-TimeStamp)] DLL Removed" -ForegroundColor Yellow}} | Out-Null
+        write-host "[*][$(Get-TimeStamp)] Removing clean up PSsessions" -ForegroundColor Yellow
+        Remove-PSSession -Session $cleanupsessions
+    }
 }
 process {
     #Collecting credentials if necessary
@@ -187,6 +252,11 @@ process {
                 Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
                 Invoke-InformationGathering -InformationGatheringType $CollectionType -OutputPath $CollectionOutputPath -ComputerInfo $hostsinfo -Session $sessions
+                write-host "[*][$(Get-TimeStamp)] Removing existent PSsessions" -ForegroundColor Yellow
+                Remove-PSSession -Session $sessions
+                #After collection I needed to remove the powershell forensic DLL from the remote hosts, as there I am not aware on how to 
+                write-host "[*][$(Get-TimeStamp)] Cleaning up collection files (PowershellForensic DLL)" -ForegroundColor Yellow
+                Get-CleanedUp
             }
             catch {
                 write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
@@ -244,14 +314,8 @@ process {
 
     if ($DownloadLatestThirdPartyModules){
         try {
-            write-host "[+][$(Get-TimeStamp)] Downloading latest Autoruns Module" -ForegroundColor Green
-            Save-Module -Name AutoRuns -Repository PSGallery -Path "$PSScriptRoot\Collection\"
-            $AutoRunsModulesPath=Get-ChildItem -Path "$PSScriptRoot\Collection\Autoruns\" -Recurse Autoruns.psm1
-            $AutoRunPS1=$($AutoRunsModulesPath.DirectoryName) + "\AutoRuns.ps1"
-            copy-item $AutoRunsModulesPath.FullName -Destination $AutoRunPS1
-            if("$PSScriptRoot\Collection\AutoRuns"){
-                write-host "[+][$(Get-TimeStamp)] Autoruns Downloaded" -ForegroundColor Green
-            }
+            Get-ModuleAutoruns
+            Get-ModulePowerForensicsv2
         }
         catch {
             write-host "[-] Houston we have a problem in UpdateThirdPartyModules" -ForegroundColor Red

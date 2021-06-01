@@ -85,23 +85,36 @@ function Get-SystemDetails {
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Logged Users"  -ForegroundColor Green
                 $LoggedUsers=Get-LoggedOnUser
 
-                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Installed software"  -ForegroundColor Green
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Current Process Tree"  -ForegroundColor Green
                 $ProcessTreeGraph=Show-ProcessTree
+                <#
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: MFT records"  -ForegroundColor Green
+                $MFTFileRecordJob = Start-Job -ScriptBlock {$RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path; Get-ForensicFileRecord}
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Waiting MFT records"  -ForegroundColor Green
+                Wait-Job -Job $MFTFileRecordJob
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Receiving MFT records"  -ForegroundColor Green
+                $MasterFileTableRecords= Receive-Job -Job $MFTFileRecordJob
+                
+                #>
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: MFT records"  -ForegroundColor Green
+                $MasterFileTableRecords=Get-ForensicFileRecord
+                
 
                 $properties = @{
-                    OSdetails          = $CompInfo
-                    InstalledProducts  = $InstalledProd
-                    Services           = $ServiceDetails
-                    Hotfixes           = $InstalledHotifixes
-                    Autoruns           = $PSautoruns
-                    DNSCache           = $DNSCacheContent
-                    RunningProcess     = $SystemProcess
-                    ProcessImageHashes = $imagehashes
-                    TCPConnection      = $NetworkConnections
-                    FirewallRules      = $FirewallRules
-                    PortProxy          = $ProxyPortConfig
-                    LoggedOnUser       = $LoggedUsers
-                    ProcessTree        = $ProcessTreeGraph
+                    OSdetails               = $CompInfo
+                    InstalledProducts       = $InstalledProd
+                    Services                = $ServiceDetails
+                    Hotfixes                = $InstalledHotifixes
+                    Autoruns                = $PSautoruns
+                    DNSCache                = $DNSCacheContent
+                    RunningProcess          = $SystemProcess
+                    ProcessImageHashes      = $imagehashes
+                    TCPConnection           = $NetworkConnections
+                    FirewallRules           = $FirewallRules
+                    PortProxy               = $ProxyPortConfig
+                    LoggedOnUser            = $LoggedUsers
+                    ProcessTree             = $ProcessTreeGraph
+                    MasterFileTableRecords  = $MasterFileTableRecords
                 }
             }
             else {
@@ -109,7 +122,7 @@ function Get-SystemDetails {
                 break
             }
 
-            $details = New-Object -TypeName PSObject -Property $properties   #netstat receive the object with the relevant information
+            $details = New-Object -TypeName PSObject -Property $properties   
             return $details
         }
         $osdetailsparameters = @{scriptblock = $osdetails }
@@ -121,18 +134,27 @@ function Get-SystemDetails {
             $GetPortProxyPath = $PSScriptRoot + "\Get-PortProxy.ps1"
             $GetLoggedOnUsersPath  = $PSScriptRoot + "\Get-LoggedOnUser.ps1"
             if ($Localhost) {
+                #importing modules to localhost
                 $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.psd1).FullName
+                $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.psd1).FullName
                 Remove-Module -Name Get-LoggedOnUser, Get-PortProxy, Show-ProcessTree -ErrorAction SilentlyContinue
-                Import-Module $AutoRunsPath, $ShowProcessTreePath, $GetPortProxyPath, $GetLoggedOnUsersPath           
+                Import-Module $AutoRunsPath, $ShowProcessTreePath, $GetPortProxyPath, $GetLoggedOnUsersPath, $Forensicsv2Path           
                 $details = Invoke-Command @osdetailsparameters
             }
             else {
+                #importing the modules in the sessions
                 $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.ps1).FullName
+                $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
+                #$RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"
+                Copy-Item $Forensicsv2Path -Destination "C:\Users\Public\" -ToSession $session
                 Invoke-Command -Session $session $AutoRunsPath 
                 Invoke-Command -Session $session $ShowProcessTreePath
                 Invoke-Command -Session $session $GetPortProxyPath
                 Invoke-Command -Session $session $GetLoggedOnUsersPath 
-                $details = Invoke-Command -Session $Session @osdetailsparameters 
+                Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path } | Out-Null
+                $details = Invoke-Command -Session $session @osdetailsparameters 
+                #Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Remove-Item -Force -Path  $RemoteForensicsv2Path -ErrorAction Continue} | Out-Null
+                
             }
             write-host "[+][$(Get-TimeStamp)] Exporting information to CSV"  -ForegroundColor Green
 
@@ -148,8 +170,8 @@ function Get-SystemDetails {
             $details.FirewallRules | Export-Csv -Path $OutputPath\FirewallRules.csv
             $details.PortProxy | Export-Csv -Path $OutputPath\PortProxy.csv
             $details.LoggedOnUser | Export-Csv -Path $OutputPath\LoggedOnUser.csv
-            $details.ProcessTree > $OutputPath\ProcessTree.txt
-
+            $details.MasterFileTableRecords | Export-Csv -Path $OutputPath\MasterFileTableRecords.csv -ErrorAction Continue
+            $details.ProcessTree > $OutputPath\ProcessTree.txt            
         }
         catch {
             write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Get-SystemDetails... " -ForegroundColor Red

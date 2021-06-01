@@ -1,4 +1,4 @@
-#Powershell security incident response helpers
+# Powershell security incident response helpers
 
 Timelining an incident:  
 Incident -> Security Alert/Abnormal Behavior -> Incident Response Steps -> Forensicf
@@ -14,15 +14,15 @@ When EDR+SIEM are not in play for an incident all comes to adhoc IR this project
     Endpoint Containment.  
     Endpoint Remediation/Eradication.  
 
-Invoke-SecurityIncidentResponse  
+## Invoke-SecurityIncidentResponse  
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
     2 - Powershell Version.  
     3 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).  
     Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.  
 
-Invoke-ArtifactsCollection
+## Invoke-ArtifactsCollection
 
-Detection/Investigation/Artifacts Collection  
+### Detection/Investigation/Artifacts Collection  
     Disk:  
     1 - Collect windows logs from winevt.  
     2 - Check IIS instalation paths and collect logs. 
@@ -36,15 +36,15 @@ Detection/Investigation/Artifacts Collection
     10 - User Sessions.  
     11 - Collect Number of hashed passwords cached allowed in lsass.  
 
-Invoke-Containment  
-Containment  
+## Invoke-Containment  
+### Containment  
     1 - Host isolation.  
     2 - Process termination.  
     3 - Terminate user session.  
     4 - Restart service.  
 
-Invoke-Remediation  
-Remediation/Eradication  
+## Invoke-Remediation  
+### Remediation/Eradication  
     1 - Service Removal.  
     2 - WMI persistence removal.  
     3 - Task Scheduler removal.  

@@ -14,7 +14,7 @@ When EDR+SIEM are not in play for an incident all comes to adhoc IR this project
     Endpoint Containment.  
     Endpoint Remediation/Eradication.  
 
-Invoke-SecurityIncidentResponse
+Invoke-SecurityIncidentResponse  
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
     2 - Powershell Version.  
     3 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).  

@@ -28,7 +28,7 @@ Get-Help .\Invoke-SIR.ps1 -Examples
 ## Invoke-InformationGathering.ps1
 
 ### Detection/Investigation/Artifacts Collection  
-System information Basic:
+System information Basic:  
     - General System info:
             • System Time and Date                                                          Done
             • Operational system version info.                                              Done

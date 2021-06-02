@@ -22,13 +22,14 @@ Get-Help .\Invoke-SIR.ps1 -Examples
 
 ## Invoke-SIR.ps1
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
-    2 - Powershell Version.  
+    2 - Creates PSsessions used to run the the modules.  
     Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.  
 
 ## Invoke-InformationGathering.ps1
 
 ### Detection/Investigation/Artifacts Collection  
-System information Basic:  
+System information  
+Basic:  
     - General System info:  
             - System Time and Date                                                          (Done)   
             - Operational system version info.                                              (Done)  
@@ -50,43 +51,43 @@ Medium:
     - PortProxy Configurations                                                           (Done)  
     - Autoruns (Persistence/Execution)                                                   (Done)  
 
-Advanced:
+Advanced:  
     - MFT records                                                                       (Done)  
     - SHIM cache                                                                        (Not Implemented)  
     - AM Cache                                                                          (Not Implemented)  
     - Collect Number of hashed passwords cached in the system.                          (Not Implemented)  
 
-Windows File Collection:
-Disabled:
-- Create a table of retention time for each evtx log
+Windows File Collection:  
+Disabled:  
+- Create a table of retention time for each evtx log (Done)  
 
 Basic:
-- Create a table of retention time for each evtx log
-- Copy the System, Appliacation and Security EVTX files
+- Create a table of retention time for each evtx log (Done)  
+- Copy the System, Appliacation and Security EVTX files (Done)  
 
 Medium:
-- Create a table of retention time for each evtx log
-- Copy all EVTX files
-- Copy prefetch files
+- Create a table of retention time for each evtx log (Done)  
+- Copy all EVTX files (Done)  
+- Copy prefetch files (Done)  
 - Copy Firewall Logs - Get-NetFirewallProfile (Not implmented)
 - Copy Browser History (Not implmented)
 
 Detailed:
-- Create a table of retention time for each evtx log
-- Copy all EVTX files
-- Copy prefetch files
-- Copy Firewall Logs - Get-NetFirewallProfile (Not implmented)
-- Copy Browser History (Not implmented)
-- Copy IIS logs (Not implmented)
-- Copy Exchange logs (Not implmented)
-- Copy Temp Files
+- Create a table of retention time for each evtx log (Done)  
+- Copy all EVTX files (Done)  
+- Copy prefetch files (Done)  
+- Copy Firewall Logs - Get-NetFirewallProfile (Not implmented)  
+- Copy Browser History (Not implmented)  
+- Copy IIS logs (Not implmented)  
+- Copy Exchange logs (Not implmented)  
+- Copy Temp Files (Not implmented)  
 
 ## Invoke-Containment  
 ### Containment  
-    1 - Host isolation.  
-    2 - Process termination.  
-    3 - Terminate user session.  
-    4 - Restart service.  
+    1 - Host isolation. (Done)
+    2 - Process termination. (Not implmented)  
+    3 - Terminate user session. (Not implmented)  
+    4 - Restart service. (Not implmented)  
 
 ## Invoke-Remediation  (Not implemented yet)
 ### Remediation/Eradication  

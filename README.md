@@ -29,32 +29,32 @@ Get-Help .\Invoke-SIR.ps1 -Examples
 
 ### Detection/Investigation/Artifacts Collection  
 System information Basic:  
-    - General System info:
-            • System Time and Date                                                          Done
-            • Operational system version info.                                              Done
-            • Drives Info                                                                   Done                               
-            • Network interface details                                                     Done
-            • Routing Table                                                                 Done
-    - Services Runing                                                                     Done
-    - List of processs (process tree and command lines and path of the image)             Done
-    - Ports open with repectives process                                                  Done
-    - Firewall rules                                                                      Done
-    - Enumerate local users                                                               Done
-    - DNS Cache                                                                           Done
-    - User Sessions.                                                                      Done
-    - Installed Programs                                                                  Done
-    - Network Connections                                                                 Done
+    - General System info:  
+            • System Time and Date                                                          Done  
+            • Operational system version info.                                              Done  
+            • Drives Info                                                                   Done                         
+            • Network interface details                                                     Done  
+            • Routing Table                                                                 Done  
+    - Services Runing                                                                     Done  
+    - List of processs (process tree and command lines and path of the image)             Done  
+    - Ports open with repectives process                                                  Done  
+    - Firewall rules                                                                      Done  
+    - Enumerate local users                                                               Done  
+    - DNS Cache                                                                           Done  
+    - User Sessions.                                                                      Done  
+    - Installed Programs                                                                  Done  
+    - Network Connections                                                                 Done  
 
-Medium:
-    - SMB Sessions                                                                       Not Implemented
-    - PortProxy Configurations                                                           Done
-    - Autoruns (Persistence/Execution)                                                   Done
+Medium:  
+    - SMB Sessions                                                                       Not Implemented  
+    - PortProxy Configurations                                                           Done  
+    - Autoruns (Persistence/Execution)                                                   Done  
 
 Advanced:
-    - MFT records                                                                       Done
-    - SHIM cache                                                                        Not Implemented
-    - AM Cache                                                                          Not Implemented
-    - Collect Number of hashed passwords cached in the system.                          Not Implemented
+    - MFT records                                                                       Done  
+    - SHIM cache                                                                        Not Implemented  
+    - AM Cache                                                                          Not Implemented  
+    - Collect Number of hashed passwords cached in the system.                          Not Implemented  
 
 Windows File Collection:
 Disabled:

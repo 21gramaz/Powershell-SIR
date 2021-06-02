@@ -28,7 +28,7 @@ Get-Help .\Invoke-SIR.ps1 -Examples
 ## Invoke-InformationGathering.ps1
 
 ### Detection/Investigation/Artifacts Collection  
-System information  
+### System information  
 Basic:  
 - General System info:  
     - System Time and Date                                                          (Done)   
@@ -57,7 +57,7 @@ Advanced:
 - AM Cache                                                                          (Not Implemented)  
 - Collect Number of hashed passwords cached in the system.                          (Not Implemented)  
 
-Windows File Collection:  
+### Windows File Collection:  
 Disabled:  
 - Create a table of retention time for each evtx log (Done)  
 

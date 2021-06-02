@@ -20,27 +20,66 @@ Get-Help- .\Invoke-SIR.ps1 -Full
 For examples
 Get-Help .\Invoke-SIR.ps1 -Examples
 
-## Invoke-SecurityIncidentResponse  
+## Invoke-SIR.ps1
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
     2 - Powershell Version.  
-    3 - Download necessary binaries to execute next steps like procdump and autorun (MS tools).  
     Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.  
 
 ## Invoke-InformationGathering.ps1
 
 ### Detection/Investigation/Artifacts Collection  
-    Disk:  
-    1 - Collect windows logs from winevt.  
-    2 - Check IIS instalation paths and collect logs. 
-    3 - Services Runing  
-    4 - List of processs (process tree and command lines and path of the image)  
-    5 - Ports open with repectives process  
-    6 - Registry (startup locations)  
-    7 - Firewall rules/Firewall logs  
-    8 - Enumerate local users  
-    9 - DNS Cache  
-    10 - User Sessions.  
-    11 - Collect Number of hashed passwords cached allowed in lsass.  
+System information Basic:
+    - General System info:
+            • System Time and Date                                                          Done
+            • Operational system version info.                                              Done
+            • Drives Info                                                                   Done                               
+            • Network interface details                                                     Done
+            • Routing Table                                                                 Done
+    - Services Runing                                                                     Done
+    - List of processs (process tree and command lines and path of the image)             Done
+    - Ports open with repectives process                                                  Done
+    - Firewall rules                                                                      Done
+    - Enumerate local users                                                               Done
+    - DNS Cache                                                                           Done
+    - User Sessions.                                                                      Done
+    - Installed Programs                                                                  Done
+    - Network Connections                                                                 Done
+
+Medium:
+    - SMB Sessions                                                                       Not Implemented
+    - PortProxy Configurations                                                           Done
+    - Autoruns (Persistence/Execution)                                                   Done
+
+Advanced:
+    - MFT records                                                                       Done
+    - SHIM cache                                                                        Not Implemented
+    - AM Cache                                                                          Not Implemented
+    - Collect Number of hashed passwords cached in the system.                          Not Implemented
+
+Windows File Collection:
+Disabled:
+- Create a table of retention time for each evtx log
+
+Basic:
+- Create a table of retention time for each evtx log
+- Copy the System, Appliacation and Security EVTX files
+
+Medium:
+- Create a table of retention time for each evtx log
+- Copy all EVTX files
+- Copy prefetch files
+- Copy Firewall Logs - Get-NetFirewallProfile (Not implmented)
+- Copy Browser History (Not implmented)
+
+Detailed:
+- Create a table of retention time for each evtx log
+- Copy all EVTX files
+- Copy prefetch files
+- Copy Firewall Logs - Get-NetFirewallProfile (Not implmented)
+- Copy Browser History (Not implmented)
+- Copy IIS logs (Not implmented)
+- Copy Exchange logs (Not implmented)
+- Copy Temp Files
 
 ## Invoke-Containment  
 ### Containment  

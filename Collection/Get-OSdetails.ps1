@@ -1,23 +1,33 @@
 <#Get-OSdetails
 This module will have functions to list:
-    1 - Services Runing                                                                     Done
-    2 - List of processs (process tree and command lines and path of the image)             Done
-    3 - Ports open with repectives process                                                  Done
-    4 - Registry (startup locations)                                                        Done
-    5 - Firewall rules                                                                      Done
-    6 - Enumerate local users
-    7 - DNS Cache                                                                           Done
-    8 - User Sessions.                                                                      Done
-    9 - Collect Number of hashed passwords cached allowed in lsass.
-    10 - General System info:
-            • System Time and Date                                                          Partial
-            • Operational system version info.                                              Partial
-            • Drives Info                                                                   
-            • Network interface details 
-            • Routing Table
-    11 - Installed Programs                                                                 Done
-    12 - Firewall Logs
-    13 - PortProxy Configurations                                                           Done
+Basic:
+    - General System info:
+            • System Time and Date                                                          Done
+            • Operational system version info.                                              Done
+            • Drives Info                                                                   Done                               
+            • Network interface details                                                     Done
+            • Routing Table                                                                 Done
+    - Services Runing                                                                     Done
+    - List of processs (process tree and command lines and path of the image)             Done
+    - Ports open with repectives process                                                  Done
+    - Firewall rules                                                                      Done
+    - Enumerate local users                                                               Done
+    - DNS Cache                                                                           Done
+    - User Sessions.                                                                      Done
+    - Installed Programs                                                                  Done
+    - Network Connections                                                                 Done
+
+Medium:
+    - SMB Sessions                                                                       Not Implemented
+    - PortProxy Configurations                                                           Done
+    - Autoruns (Persistence/Execution)                                                   Done
+
+Advanced:
+    - MFT records                                                                       Done
+    - SHIM cache                                                                        Not Implemented
+    - AM Cache                                                                          Not Implemented
+    - Collect Number of hashed passwords cached in the system.                          Not Implemented
+
 #>
 
 
@@ -33,16 +43,19 @@ function Get-SystemDetails {
 
         [Parameter()]
         [System.Management.Automation.Runspaces.PSSession]
-        $Session
+        $Session,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Basic", "Medium","Detailed")]
+        [string]
+        $InformationLevel
     )
 
     begin {
-
         
-
         #creates folder to copy the logs
         if ($OutputPath) { New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null } 
-        $osdetails = {
+        $osdetailsbasic = {
             function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: System Details this might take some minutes"  -ForegroundColor Green
             $details = @("")
@@ -64,9 +77,6 @@ function Get-SystemDetails {
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Installed HotFix"  -ForegroundColor Green
                 $InstalledHotifixes=Get-ComputerInfo | Select-Object -ExpandProperty OSHotFixes
 
-                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: AutoRuns"  -ForegroundColor Green
-                $PSautoruns=Get-PSAutorun -All
-
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: DNS Cache"  -ForegroundColor Green
                 $DNSCacheContent=Get-DnsClientCache
 
@@ -79,42 +89,40 @@ function Get-SystemDetails {
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Firewall Rules"  -ForegroundColor Green
                 $FirewallRules= Get-NetFirewallRule
 
-                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Proxy Port Configuration"  -ForegroundColor Green
-                $ProxyPortConfig=Get-PortProxy
-
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Logged Users"  -ForegroundColor Green
                 $LoggedUsers=Get-LoggedOnUser
 
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Current Process Tree"  -ForegroundColor Green
                 $ProcessTreeGraph=Show-ProcessTree
-                <#
-                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: MFT records"  -ForegroundColor Green
-                $MFTFileRecordJob = Start-Job -ScriptBlock {$RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path; Get-ForensicFileRecord}
-                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Waiting MFT records"  -ForegroundColor Green
-                Wait-Job -Job $MFTFileRecordJob
-                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Receiving MFT records"  -ForegroundColor Green
-                $MasterFileTableRecords= Receive-Job -Job $MFTFileRecordJob
-                
-                #>
-                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: MFT records"  -ForegroundColor Green
-                $MasterFileTableRecords=Get-ForensicFileRecord
-                
+
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Network Routes"  -ForegroundColor Green
+                $NetworkRoutes=Get-NetRoute
+
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Network Interfaces"  -ForegroundColor Green
+                $NetworkInterfaces=Get-NetAdapter
+
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: File system Drives"  -ForegroundColor Green
+                $FileSystemDrives=Get-PSDrive | Where-Object {$_.Provider -match "FileSystem"}
+
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Local users"  -ForegroundColor Green
+                $LocalUsers=Get-LocalUser
 
                 $properties = @{
                     OSdetails               = $CompInfo
                     InstalledProducts       = $InstalledProd
                     Services                = $ServiceDetails
                     Hotfixes                = $InstalledHotifixes
-                    Autoruns                = $PSautoruns
                     DNSCache                = $DNSCacheContent
                     RunningProcess          = $SystemProcess
                     ProcessImageHashes      = $imagehashes
                     TCPConnection           = $NetworkConnections
                     FirewallRules           = $FirewallRules
-                    PortProxy               = $ProxyPortConfig
                     LoggedOnUser            = $LoggedUsers
                     ProcessTree             = $ProcessTreeGraph
-                    MasterFileTableRecords  = $MasterFileTableRecords
+                    NetworkRoutes           = $NetworkRoutes
+                    NetworkInterfaces       = $NetworkInterfaces
+                    FileSystemDrives        = $FileSystemDrives
+                    LocalUsers              = $LocalUsers
                 }
             }
             else {
@@ -125,53 +133,138 @@ function Get-SystemDetails {
             $details = New-Object -TypeName PSObject -Property $properties   
             return $details
         }
-        $osdetailsparameters = @{scriptblock = $osdetails }
+        $osdetailsbasicparameters = @{scriptblock = $osdetailsbasic }
     
+        $osdetailsmedium = {
+            function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }
+            $mediumdetails = @("")
+            if (( ($PSVersionTable).PSVersion.Major -ge 5) -and (($PSVersionTable).PSVersion.Minor -ge 1)) {
+
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: AutoRuns"  -ForegroundColor Green
+                $PSautoruns=Get-PSAutorun -All
+
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Proxy Port Configuration"  -ForegroundColor Green
+                $ProxyPortConfig=Get-PortProxy
+
+                $mediumproperties = @{
+                    Autoruns                = $PSautoruns
+                    PortProxy               = $ProxyPortConfig
+                }
+            }
+            else {
+                write-host "[+][$(Get-TimeStamp)] Powershell version does not support collection"  -ForegroundColor Red
+                break
+            }
+
+            $mediumdetails = New-Object -TypeName PSObject -Property $mediumproperties   
+            return $mediumdetails
+        }
+        $osdetailsmediumparameters = @{scriptblock = $osdetailsmedium }
+
+
+        $osdetailsdetailed = {
+            function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }
+            $detaileddetails = @("")
+            if (( ($PSVersionTable).PSVersion.Major -ge 5) -and (($PSVersionTable).PSVersion.Minor -ge 1)) {
+
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: MFT records"  -ForegroundColor Green
+                $MasterFileTableRecords=Get-ForensicFileRecord
+
+                $properties = @{
+                    MasterFileTableRecords  = $MasterFileTableRecords
+                }
+            }
+            else {
+                write-host "[+][$(Get-TimeStamp)] Powershell version does not support collection"  -ForegroundColor Red
+                break
+            }
+
+            $detaileddetails = New-Object -TypeName PSObject -Property $properties   
+            return $detaileddetails
+        }
+        $osdetailsdetailedparameters = @{scriptblock = $osdetailsdetailed }
+
+
+
     }
     process {
         try {
             $ShowProcessTreePath = $PSScriptRoot + "\Show-ProcessTree.ps1"
-            $GetPortProxyPath = $PSScriptRoot + "\Get-PortProxy.ps1"
             $GetLoggedOnUsersPath  = $PSScriptRoot + "\Get-LoggedOnUser.ps1"
-            if ($Localhost) {
-                #importing modules to localhost
-                $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.psd1).FullName
-                $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.psd1).FullName
-                Remove-Module -Name Get-LoggedOnUser, Get-PortProxy, Show-ProcessTree -ErrorAction SilentlyContinue
-                Import-Module $AutoRunsPath, $ShowProcessTreePath, $GetPortProxyPath, $GetLoggedOnUsersPath, $Forensicsv2Path           
-                $details = Invoke-Command @osdetailsparameters
+            $GetPortProxyPath = $PSScriptRoot + "\Get-PortProxy.ps1"
+            if ($InformationLevel -eq "Basic" -or $InformationLevel -eq  "Medium" -or $InformationLevel -eq "Detailed"){
+                if ($Localhost) {
+                    #importing modules to localhost
+                    Remove-Module -Name Get-LoggedOnUser, Show-ProcessTree -ErrorAction SilentlyContinue
+                    Import-Module $ShowProcessTreePath, $GetLoggedOnUsersPath        
+                    $basicdetails = Invoke-Command @osdetailsbasicparameters
+                }
+                else {
+                    #importing the modules in the sessions
+                    Invoke-Command -Session $session $ShowProcessTreePath
+                    Invoke-Command -Session $session $GetLoggedOnUsersPath 
+                    $basicdetails = Invoke-Command -Session $session @osdetailsbasicparameters 
+                }
             }
-            else {
-                #importing the modules in the sessions
-                $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.ps1).FullName
-                $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
-                #$RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"
-                Copy-Item $Forensicsv2Path -Destination "C:\Users\Public\" -ToSession $session
-                Invoke-Command -Session $session $AutoRunsPath 
-                Invoke-Command -Session $session $ShowProcessTreePath
-                Invoke-Command -Session $session $GetPortProxyPath
-                Invoke-Command -Session $session $GetLoggedOnUsersPath 
-                Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path } | Out-Null
-                $details = Invoke-Command -Session $session @osdetailsparameters 
-                #Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Remove-Item -Force -Path  $RemoteForensicsv2Path -ErrorAction Continue} | Out-Null
-                
+            if ($InformationLevel -eq "Medium" -or $InformationLevel -eq "Detailed"){
+                if ($Localhost) {
+                    #importing modules to localhost
+                    $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.psd1).FullName
+                    Remove-Module -Name Get-PortProxy
+                    Import-Module $AutoRunsPath, $GetPortProxyPath     
+                    $mediumdetails = Invoke-Command @osdetailsmediumparameters
+                }
+                else {
+                    #importing the modules in the sessions
+                    $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.ps1).FullName
+                    Remove-Module -Name Get-PortProxy
+                    Invoke-Command -Session $session $AutoRunsPath 
+                    Invoke-Command -Session $session $GetPortProxyPath
+                    $mediumdetails = Invoke-Command -Session $session @osdetailsmediumparameters 
+                }
             }
+            if ($InformationLevel -eq "Detailed"){
+                if ($Localhost) {
+                    #importing modules to localhost
+                    $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.psd1).FullName
+                    Import-Module $Forensicsv2Path           
+                    $detaileddetails = Invoke-Command @osdetailsdetailedparameters
+                }
+                else {
+                    #importing the modules in the sessions
+                    $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
+                    Copy-Item $Forensicsv2Path -Destination "C:\Users\Public\" -ToSession $session
+                    Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path } | Out-Null
+                    $detaileddetails = Invoke-Command -Session $session @osdetailsdetailedparameters 
+                }
+            }
+            
             write-host "[+][$(Get-TimeStamp)] Exporting information to CSV"  -ForegroundColor Green
-
-            $details.OSdetails | Export-Csv -Path $OutputPath\OSdetails.csv
-            $details.InstalledProducts | Export-Csv -Path $OutputPath\InstalledProducts.csv
-            $details.Services | Export-Csv -Path $OutputPath\Services.csv
-            $details.Hotfixes | Export-Csv -Path $OutputPath\Hotfixes.csv
-            $details.Autoruns | Export-Csv -Path $OutputPath\Autoruns.csv
-            $details.DNSCache | Export-Csv -Path $OutputPath\DNSCache.csv
-            $details.RunningProcess | Export-Csv -Path $OutputPath\RunningProcess.csv
-            $details.ProcessImageHashes | Export-Csv -Path $OutputPath\ProcessImageHashes.csv
-            $details.TCPConnection | Export-Csv -Path $OutputPath\TCPConnection.csv
-            $details.FirewallRules | Export-Csv -Path $OutputPath\FirewallRules.csv
-            $details.PortProxy | Export-Csv -Path $OutputPath\PortProxy.csv
-            $details.LoggedOnUser | Export-Csv -Path $OutputPath\LoggedOnUser.csv
-            $details.MasterFileTableRecords | Export-Csv -Path $OutputPath\MasterFileTableRecords.csv -ErrorAction Continue
-            $details.ProcessTree > $OutputPath\ProcessTree.txt            
+            if ($InformationLevel -eq "Basic" -or $InformationLevel -eq "Medium" -or $InformationLevel -eq "Detailed"){
+                $basicdetails.OSdetails | Export-Csv -Path $OutputPath\OSdetails.csv
+                $basicdetails.InstalledProducts | Export-Csv -Path $OutputPath\InstalledProducts.csv
+                $basicdetails.Services | Export-Csv -Path $OutputPath\Services.csv
+                $basicdetails.Hotfixes | Export-Csv -Path $OutputPath\Hotfixes.csv                
+                $basicdetails.DNSCache | Export-Csv -Path $OutputPath\DNSCache.csv
+                $basicdetails.RunningProcess | Export-Csv -Path $OutputPath\RunningProcess.csv
+                $basicdetails.ProcessImageHashes | Export-Csv -Path $OutputPath\ProcessImageHashes.csv
+                $basicdetails.TCPConnection | Export-Csv -Path $OutputPath\TCPConnection.csv
+                $basicdetails.FirewallRules | Export-Csv -Path $OutputPath\FirewallRules.csv                
+                $basicdetails.LoggedOnUser | Export-Csv -Path $OutputPath\LoggedOnUser.csv 
+                $basicdetails.NetworkRoutes | Export-Csv -Path $OutputPath\NetworkRoutes.csv 
+                $basicdetails.NetworkInterfaces | Export-Csv -Path $OutputPath\NetworkInterfaces.csv
+                $basicdetails.FileSystemDrives | Export-Csv -Path $OutputPath\FileSystemDrives.csv
+                $basicdetails.LocalUsers | Export-Csv -Path $OutputPath\LocalUsers.csv
+                $basicdetails.ProcessTree > $OutputPath\ProcessTree.txt      
+            }
+            if ($InformationLevel -eq "Medium" -or $InformationLevel -eq "Detailed"){
+                $mediumdetails.PortProxy | Export-Csv -Path $OutputPath\PortProxy.csv
+                $mediumdetails.Autoruns | Export-Csv -Path $OutputPath\Autoruns.csv
+            }
+            if ($InformationLevel -eq "Detailed"){
+                $detaileddetails.MasterFileTableRecords | Export-Csv -Path $OutputPath\MasterFileTableRecords.csv -ErrorAction Continue
+            }
+      
         }
         catch {
             write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Get-SystemDetails... " -ForegroundColor Red

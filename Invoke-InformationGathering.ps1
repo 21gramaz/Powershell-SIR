@@ -37,7 +37,17 @@ function Invoke-DiskInformationGathering {
 
         [Parameter()]
         [Object]
-        $Session
+        $Session,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Basic", "Medium","Detailed")]
+        [string]
+        $InformationLevel,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Disabled","Basic", "Medium","Detailed")]
+        [string]
+        $FilesCollectionLevel
     )
     
     begin {
@@ -100,9 +110,16 @@ function Invoke-DiskInformationGathering {
                 #confirming there is enough disk space for windows logs
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
                 #copying files to collection path
-                Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
-                Invoke-WindowsPrefetchCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
-                Get-SystemDetails -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                if($FilesCollectionLevel -eq "Basic"){
+                    Invoke-BasicWindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                }
+                if($FilesCollectionLevel -eq "Medium"){
+                    Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                    Invoke-WindowsPrefetchCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                }
+
+                #gathering system information
+                Get-SystemDetails -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME -InformationLevel $InformationLevel
             }
             else {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
@@ -113,14 +130,20 @@ function Invoke-DiskInformationGathering {
                 #confirming there is enough disk space
                 Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
                 foreach ($singlesession in $session) {
-                    Invoke-WindowsPrefetchCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
-                    Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
-                    Get-SystemDetails -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                    if($FilesCollectionLevel -eq "Basic"){
+                        Invoke-BasicWindowsEventsCollection Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                    }
+                    if($FilesCollectionLevel -eq "Medium"){
+                        Invoke-WindowsPrefetchCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                        Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                    }
+                    #gathering system information
+                    Get-SystemDetails -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName) -InformationLevel $InformationLevel
                 }
             }
         }
         catch {
-            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-DiskInformationGathering... " -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
         }
     }
@@ -166,6 +189,16 @@ function Invoke-InformationGathering {
         [String]
         $OutputPath,
 
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Basic", "Medium","Detailed")]
+        [string]
+        $InformationLevel,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Disabled","Basic", "Medium","Detailed")]
+        [string]
+        $FilesCollectionLevel,
+
         [Parameter()]
         [Object]
         $Session
@@ -177,7 +210,7 @@ function Invoke-InformationGathering {
         try {
             if ($LocalHost) {
                 if ($InformationGatheringType -eq "Disk") { 
-                    Invoke-DiskInformationGathering -LocalHost -OutputPath $OutputPath
+                    Invoke-DiskInformationGathering -LocalHost -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
                 }
                 elseif ($InformationGatheringType -eq "Memory") { 
                     Invoke-MemoryInformationGathering -LocalHost -OutputPath $OutputPath
@@ -188,7 +221,7 @@ function Invoke-InformationGathering {
             }
             else {
                 if ($InformationGatheringType -eq "Disk") {
-                    Invoke-DiskInformationGathering -Session $session -OutputPath $OutputPath
+                    Invoke-DiskInformationGathering -Session $session -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
                 }
                 elseif ($InformationGatheringType -eq "Memory") { 
                     Invoke-MemoryInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $Session -OutputPath $OutputPath
@@ -199,7 +232,7 @@ function Invoke-InformationGathering {
             }
         }
         catch {
-            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-InformationGathering... " -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
         }
     }

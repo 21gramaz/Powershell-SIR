@@ -55,6 +55,62 @@
     -Memory. (Not Implemented)
     -All. (Not Implemented)
 
+  .PARAMETER InformationLevel
+  Used to set the level of information being gathered from the system as describes the below:
+  Basic:
+    - General System info:
+            • System Time and Date                                                          Done
+            • Operational system version info.                                              Done
+            • Drives Info                                                                   Done                               
+            • Network interface details                                                     Done
+            • Routing Table                                                                 Done
+    - Services Runing                                                                     Done
+    - List of processs (process tree and command lines and path of the image)             Done
+    - Ports open with repectives process                                                  Done
+    - Firewall rules                                                                      Done
+    - Enumerate local users                                                               Done
+    - DNS Cache                                                                           Done
+    - User Sessions.                                                                      Done
+    - Installed Programs                                                                  Done
+    - Network Connections                                                                 Done
+   
+    Medium: 
+    - SMB Sessions                                                                       Not Implemented                                    
+    - PortProxy Configurations                                                           Done
+    - Autoruns (Persistence/Execution)                                                   Done
+
+    Advanced:
+    - MFT records                                                                       Done
+    - SHIM cache                                                                        Not Implemented
+    - AM Cache                                                                          Not Implemented
+    - Collect Number of hashed passwords cached in the system.                          Not Implemented
+
+  .PARAMETER FilesCollectionLevel
+  Used to set the level of files being copied from the system as describes the below:
+    Disabled:
+    - Create a table of retention time for each evtx log                                Done
+
+    Basic:
+    - Create a table of retention time for each evtx log                                Done
+    - Copy the System, Appliacation and Security EVTX files                             Done
+
+    Medium:
+    - Create a table of retention time for each evtx log                                Done
+    - Copy all EVTX files                                                               Done
+    - Copy prefetch files                                                               Done
+    - Copy Firewall Logs - Get-NetFirewallProfile                                       Not implmented
+    - Copy Browser History                                                              Not implmented
+
+    Detailed:
+    - Create a table of retention time for each evtx log                                Done
+    - Copy all EVTX files                                                               Done
+    - Copy prefetch files                                                               Done
+    - Copy Firewall Logs - Get-NetFirewallProfile                                       Not implmented
+    - Copy Browser History                                                              Not implmented
+    - Copy IIS logs                                                                     Not implmented
+    - Copy Exchange logs                                                                Not implmented
+    - Copy Temp Files                                                                   Not implmented
+
   .PARAMETER ContainmentType
   Used to update the following third party modules:
     -NetworkIsolation.  (Implemented)
@@ -122,6 +178,16 @@ param (
     [Parameter(ParameterSetName = "Collection")]
     [string]
     $CollectionOutputPath = "$PSScriptRoot\Collection\Reports",
+
+    [Parameter(ParameterSetName = "Collection")]
+    [ValidateSet("Basic", "Medium","Detailed")]
+    [string]
+    $InformationLevel = "Basic",
+
+    [Parameter(ParameterSetName = "Collection")]
+    [ValidateSet("Disabled","Basic", "Medium","Detailed")]
+    [string]
+    $FilesCollectionLevel = "Medium",
     
     [Parameter(Mandatory = $true, ParameterSetName = "Contaiment")]
     [ValidateSet("NetworkIsolation", "NetworkRelease")]
@@ -182,7 +248,7 @@ begin {
                     
             }
             catch {
-                write-host "[-][$(Get-TimeStamp)] Houston we had a problem gathering the basic info... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we have a problem gathering the basic info... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
                 exit
             }
@@ -303,7 +369,7 @@ process {
             }
         }
         catch {
-            Write-host "[-][$(Get-TimeStamp)]Houston we had a problem..." -ForegroundColor Red
+            Write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-SIR - Starting sessions..." -ForegroundColor Red
             Write-host $_ -ForegroundColor Red
             exit 
         }
@@ -318,7 +384,7 @@ process {
             }
         }
         catch {
-            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-SIR - getting basic info... " -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
             exit
         }
@@ -328,7 +394,7 @@ process {
             $hostsinfo = get-basicinfo -ErrorAction Stop
         }
         catch {
-            write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+            write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-SIR - getting basic info... " -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
             exit
         }
@@ -345,15 +411,15 @@ process {
             try {
                 Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
-                Invoke-InformationGathering -InformationGatheringType $CollectionType -OutputPath $CollectionOutputPath -ComputerInfo $hostsinfo -Session $sessions
+                Invoke-InformationGathering -InformationGatheringType $CollectionType -OutputPath $CollectionOutputPath -ComputerInfo $hostsinfo -Session $sessions -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
                 write-host "[*][$(Get-TimeStamp)] Removing existent PSsessions" -ForegroundColor Yellow
                 Remove-PSSession -Session $sessions
                 #After collection I needed to remove the powershell forensic DLL from the remote hosts, as there I am not aware on how to 
                 write-host "[*][$(Get-TimeStamp)] Cleaning up collection files (PowershellForensic DLL)" -ForegroundColor Yellow
-                Get-CleanedUp
+                if ($InformationLevel -eq "Medium" -or $InformationLevel -eq "Detailed"){ Get-CleanedUp }                
             }
             catch {
-                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-SIR - Collection... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
             }
         }
@@ -366,7 +432,7 @@ process {
                     Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostinfo -Session $session
                 }
                 catch {
-                    write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+                    write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-SIR - Containment... " -ForegroundColor Red
                     Write-Host $_ -ForegroundColor Red
                 }
             }
@@ -382,10 +448,10 @@ process {
             try {
                 Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
-                Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -LocalHost -OutputPath $CollectionOutputPath
+                Invoke-InformationGathering -InformationGatheringType $CollectionType -ComputerInfo $hostsinfo -LocalHost -OutputPath $CollectionOutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
             }
             catch {
-                write-host "[-] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-] Houston we have a problem in Invoke-SIR - Collection..." -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
             }
         }
@@ -397,7 +463,7 @@ process {
                 Invoke-Containment -ContainmentType $ContainmentType -ComputerInfo $hostsinfo -LocalHost
             }
             catch {
-                write-host "[-][$(Get-TimeStamp)] Houston we had a problem... " -ForegroundColor Red
+                write-host "[-][$(Get-TimeStamp)]  Houston we have a problem in Invoke-SIR - Containment... " -ForegroundColor Red
                 Write-Host $_ -ForegroundColor Red
             }
         }
@@ -412,7 +478,7 @@ process {
             Get-ModulePowerForensicsv2
         }
         catch {
-            write-host "[-] Houston we have a problem in UpdateThirdPartyModules" -ForegroundColor Red
+            write-host "[-] Houston we have a problem in UpdateThirdPartyModules..." -ForegroundColor Red
             Write-Host $_ -ForegroundColor Red
             
         }

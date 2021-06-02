@@ -15,7 +15,7 @@ When EDR+SIEM are not in play for an incident all comes to adhoc IR this project
     Endpoint Remediation/Eradication.
 
 For Help
-Get-Help- .\Invoke-SIR.ps1 -Full
+Get-Help .\Invoke-SIR.ps1 -Full
 
 For examples
 Get-Help .\Invoke-SIR.ps1 -Examples

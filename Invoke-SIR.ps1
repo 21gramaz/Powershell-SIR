@@ -98,7 +98,7 @@
     - Create a table of retention time for each evtx log                                Done
     - Copy all EVTX files                                                               Done
     - Copy prefetch files                                                               Done
-    - Copy Firewall Logs - Get-NetFirewallProfile                                       Not implmented
+    - Copy Firewall Logs                                                                Not implmented
     - Copy Browser History                                                              Not implmented
 
     Detailed:
@@ -408,6 +408,7 @@ process {
     if ($null -ne $ComputerName) {
         if ($Collection) {
             write-host "[+][$(Get-TimeStamp)] Starting Collection" -ForegroundColor Green
+            if($(Test-Path $CollectionOutputPath) -eq $false){New-Item -ItemType Directory -Force -Path $CollectionOutputPath | Out-Null}
             try {
                 Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 
@@ -445,6 +446,7 @@ process {
     else {
         if ($Collection) {
             write-host "[+][$(Get-TimeStamp)] Starting Collection" -ForegroundColor Green
+            if($(Test-Path $CollectionOutputPath) -eq $false){New-Item -ItemType Directory -Force -Path $CollectionOutputPath | Out-Null}
             try {
                 Remove-Module -Name Invoke-InformationGathering -ErrorAction SilentlyContinue
                 Import-Module -Name "$PSScriptRoot\Invoke-InformationGathering.ps1" 

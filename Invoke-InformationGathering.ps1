@@ -54,6 +54,12 @@ function Invoke-DiskInformationGathering {
         $ErrorActionPreference = "stop"
         $OutputDrive = (Get-Item $OutputPath).PSDrive.Name
 
+        function Get-RandomMD5{
+            #https://gist.githubusercontent.com/benrobot/67bacea1b1bbe4eb0d9529ba2c65b2a6/raw/4f36375e8a32cc007d868199f8500a286f1ec774/HashString.ps1 changed from sha256 to md5 because of path size.
+            $MD5=new-object System.Security.Cryptography.MD5CryptoServiceProvider | ForEach-Object {$_.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("$(Get-Date -UFormat %s)"))} | ForEach-Object {$_.ToString("x2")}
+            foreach ($string in $MD5) {$randomMD5string+=$string}
+            return $randomMD5string
+        }
         function Get-TimeStamp {
             get-date -Format "MM/dd/yyyy HH:mm:ss K"
         }
@@ -105,40 +111,48 @@ function Invoke-DiskInformationGathering {
             Import-Module -Name "$PSScriptRoot\Collection\Invoke-WindowsFilesCollection.ps1"
             Import-Module -Name "$PSScriptRoot\Collection\Get-OSdetails.ps1"
             if ($Localhost) {
+                $RandomSHA256=Get-RandomMD5
+                $RandomFolderPath="$env:COMPUTERNAME" + "-" + "$RandomSHA256"
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
-                $formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath\$env:COMPUTERNAME
+                #$formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath\$env:COMPUTERNAME
+                $formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath\$RandomFolderPath
                 #confirming there is enough disk space for windows logs
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
                 #copying files to collection path
                 if($FilesCollectionLevel -eq "Basic"){
-                    Invoke-BasicWindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                    Invoke-BasicWindowsEventsCollection -Localhost -OutputPath $OutputPath\$RandomFolderPath
                 }
                 if($FilesCollectionLevel -eq "Medium"){
-                    Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
-                    Invoke-WindowsPrefetchCollection -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME
+                    Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath\$RandomFolderPath
+                    Invoke-WindowsPrefetchCollection -Localhost -OutputPath $OutputPath\$RandomFolderPath
+                    Invoke-WindowsFirewalllogsCollection -Localhost -OutputPath $OutputPath\$RandomFolderPath
                 }
 
                 #gathering system information
-                Get-SystemDetails -Localhost -OutputPath $OutputPath\$env:COMPUTERNAME -InformationLevel $InformationLevel
+                Get-SystemDetails -Localhost -OutputPath $OutputPath\$RandomFolderPath -InformationLevel $InformationLevel
             }
             else {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
                 foreach ($singlesession in $session) {
-                    $logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                    $RandomSHA256=Get-RandomMD5
+                    $RandomFolderPath="$($singlesession.ComputerName)" + "-" + "$RandomSHA256"
+                    #$logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                    $logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
                     $logstotalsize = $logstotalsize + $logsize
                 }
                 #confirming there is enough disk space
                 Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
                 foreach ($singlesession in $session) {
                     if($FilesCollectionLevel -eq "Basic"){
-                        Invoke-BasicWindowsEventsCollection Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                        Invoke-BasicWindowsEventsCollection Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
                     }
                     if($FilesCollectionLevel -eq "Medium"){
-                        Invoke-WindowsPrefetchCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
-                        Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
+                        Invoke-WindowsPrefetchCollection -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
+                        Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
+                        Invoke-WindowsFirewalllogsCollection -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
                     }
                     #gathering system information
-                    Get-SystemDetails -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName) -InformationLevel $InformationLevel
+                    Get-SystemDetails -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath -InformationLevel $InformationLevel
                 }
             }
         }

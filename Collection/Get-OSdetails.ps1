@@ -161,7 +161,6 @@ function Get-SystemDetails {
         }
         $osdetailsmediumparameters = @{scriptblock = $osdetailsmedium }
 
-
         $osdetailsdetailed = {
             function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }
             $detaileddetails = @("")
@@ -183,8 +182,6 @@ function Get-SystemDetails {
             return $detaileddetails
         }
         $osdetailsdetailedparameters = @{scriptblock = $osdetailsdetailed }
-
-
 
     }
     process {
@@ -217,7 +214,7 @@ function Get-SystemDetails {
                 else {
                     #importing the modules in the sessions
                     $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.ps1).FullName
-                    Remove-Module -Name Get-PortProxy
+                    #Remove-Module -Name Get-PortProxy
                     Invoke-Command -Session $session $AutoRunsPath 
                     Invoke-Command -Session $session $GetPortProxyPath
                     $mediumdetails = Invoke-Command -Session $session @osdetailsmediumparameters 
@@ -235,7 +232,7 @@ function Get-SystemDetails {
                     $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
                     Copy-Item $Forensicsv2Path -Destination "C:\Users\Public\" -ToSession $session
                     Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path } | Out-Null
-                    $detaileddetails = Invoke-Command -Session $session @osdetailsdetailedparameters 
+                    $detaileddetails = Invoke-Command -Session $session @osdetailsdetailedparameters -ErrorAction Continue
                 }
             }
             

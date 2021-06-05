@@ -108,3 +108,5 @@ https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershel
 https://powerforensics.readthedocs.io/en/latest/  
 https://github.com/LeeHolmes/AutoRuns 
 https://github.com/Velocidex/WinPmem/releases
+https://www.sans.org/security-resources/posters/memory-forensics-cheat-sheet/365/download
+Incident Response & Computer Forensics, Third Edition 

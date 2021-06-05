@@ -52,8 +52,8 @@
   .PARAMETER CollectionType
   Used to set the collection for one of these three options:
     -Disk. (Implemented)
-    -Memory. (Not Implemented)
-    -All. (Not Implemented)
+    -Memory. It will use winpmem.exe downloaded https://github.com/Velocidex/WinPmem/releases from to dump volatile memory. (Implemented for Local system)
+    -All. (Implemented for local system)
 
   .PARAMETER InformationLevel
   Used to set the level of information being gathered from the system as describes the below:
@@ -98,14 +98,14 @@
     - Create a table of retention time for each evtx log                                Done
     - Copy all EVTX files                                                               Done
     - Copy prefetch files                                                               Done
-    - Copy Firewall Logs                                                                Not implmented
+    - Copy Firewall Logs                                                                Done
     - Copy Browser History                                                              Not implmented
 
     Detailed:
     - Create a table of retention time for each evtx log                                Done
     - Copy all EVTX files                                                               Done
     - Copy prefetch files                                                               Done
-    - Copy Firewall Logs - Get-NetFirewallProfile                                       Not implmented
+    - Copy Firewall Logs - Get-NetFirewallProfile                                       Done
     - Copy Browser History                                                              Not implmented
     - Copy IIS logs                                                                     Not implmented
     - Copy Exchange logs                                                                Not implmented

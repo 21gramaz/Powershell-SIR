@@ -107,14 +107,6 @@ function Invoke-WindowsPrefetchCollection {
             }
 
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Verifying if Prefetch is enabled"  -ForegroundColor Green
-            <#$PrefetchValue = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters\" -Name EnablePrefetcher | Select-Object EnablePrefetcher
-            $PrefetchReg = $PrefetchValue.EnablePrefetcher
-            if ($PrefetchValue.EnablePrefetcher -eq 0) {
-                write-host "[-][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Prefetch disabled in the system EnablePrefetcher value: $PrefetchReg"  -ForegroundColor Red
-            }
-            else {
-                Copy-Item -Recurse -Path "C:\Windows\Prefetch\" -Destination "C:\Users\Public\Prefetch"
-            }#>
             if(Test-Path "C:\Windows\Prefetch"){
                 Copy-Item -Recurse -Path "C:\Windows\Prefetch\" -Destination "C:\Users\Public\Prefetch"
             }
@@ -152,7 +144,8 @@ function Invoke-WindowsPrefetchCollection {
         else {
             try {
                 Invoke-Command -Session $Session @copywindowsprefetchsparameters
-                Copy-Item -FromSession $Session "C:\Users\Public\Prefetch" -Destination $OutputPath -Recurse -ErrorAction Continue | Out-Null
+                #Copy-Item -FromSession $Session "C:\Users\Public\Prefetch" -Destination $OutputPath -Recurse -ErrorAction Continue | Out-Null
+                Copy-Item -FromSession $Session "C:\Windows\Prefetch\" -Destination $OutputPath -Recurse -ErrorAction Continue | Out-Null
                 Invoke-Command -Session $session @removetempfolderparameters
             }
             catch {

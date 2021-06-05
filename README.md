@@ -101,9 +101,10 @@ Detailed:
     8 - Remove browser extenstions  (Maybe)  
 
 
-References:
+References and code sources:
 https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/  
 https://github.com/davehull/Kansa/tree/master/Modules  
 https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershell_3393  
 https://powerforensics.readthedocs.io/en/latest/  
-https://github.com/LeeHolmes/AutoRuns  
+https://github.com/LeeHolmes/AutoRuns 
+https://github.com/Velocidex/WinPmem/releases

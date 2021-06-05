@@ -207,7 +207,7 @@ function Get-SystemDetails {
                 if ($Localhost) {
                     #importing modules to localhost
                     $AutoRunsPath = (Get-ChildItem -Path "$PSScriptRoot\Autoruns\" -Recurse Autoruns.psd1).FullName
-                    Remove-Module -Name Get-PortProxy
+                    Remove-Module -Name Get-PortProxy -ErrorAction SilentlyContinue
                     Import-Module $AutoRunsPath, $GetPortProxyPath     
                     $mediumdetails = Invoke-Command @osdetailsmediumparameters
                 }

@@ -119,7 +119,7 @@ References and code sources:
 - https://github.com/davehull/Kansa/tree/master/Modules  
 - https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershell_3393  
 - https://powerforensics.readthedocs.io/en/latest/  
-- https://github.com/LeeHolmes/AutoRuns  
+- https://github.com/p0w3rsh3ll/AutoRuns
 - https://github.com/Velocidex/WinPmem/releases  
 - https://www.sans.org/security-resources/posters/memory-forensics-cheat-sheet/365/download   
 - Incident Response & Computer Forensics, Third Edition  

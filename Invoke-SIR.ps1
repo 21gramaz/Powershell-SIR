@@ -6,7 +6,7 @@
   Invoke-SIR.ps1 is responsible to determine which of the other 3 child scripts will be called, depending which stage of SIR you are in, these three other scripts are:
   1 - Invoke-InformationGathering.ps1 it is responsible to gather information using third party modules or own modules, the scripts/modules below are used:
         -Get-OSDetails.ps1 - Most of the commands used here are simple commands to list system information or to call third party modules:
-            *AutoRuns Module - https://github.com/LeeHolmes/AutoRuns - Mostly do the same as autoruns.exe part of sysinternal tools, to find persistence and execution techiniques.
+            *AutoRuns Module - https://github.com/p0w3rsh3ll/AutoRuns - Mostly do the same as autoruns.exe part of sysinternal tools, to find persistence and execution techiniques.
             *PowerForensics Module - https://powerforensics.readthedocs.io/en/latest/ - Used the DLL to import-modules and get MFT records, but it owns a very wide range of forensic CMDlets.
             *Get-PortProxy.ps1 - https://www.powershellgallery.com/packages/NetshUtils/0.1.447696-alpha/Content/public%5Cinterface%5Cportproxy%5CGet-PortProxy.ps1 - Used to bring Port-Proxy information, when people are pivoting in the host this kind of configuration might be used to routing.
             *Show-ProcessTree.ps1 - https://p0w3rsh3ll.wordpress.com/ - Used to review process tree graphically (easier than have a list of process to find what is suspicious)

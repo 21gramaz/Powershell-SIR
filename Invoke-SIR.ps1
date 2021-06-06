@@ -1,6 +1,6 @@
 <#
   .SYNOPSIS
-  Invoke-SIR its a powershell script that aim to help in Investigation (information and artifact collection), containment and remediation part of Security Incident Response for Windows. Live response script.
+  Invoke-SIR its a powershell script that aim to help in Investigation (information and artifact collection), containment and remediation part of Security Incident Response for Windows. Live response script. Requires Powershell 5.1
 
   .DESCRIPTION
   Invoke-SIR.ps1 is responsible to determine which of the other 3 child scripts will be called, depending which stage of SIR you are in, these three other scripts are:

@@ -223,15 +223,17 @@ function Get-SystemDetails {
             if ($InformationLevel -eq "Detailed"){
                 if ($Localhost) {
                     #importing modules to localhost
-                    $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.psd1).FullName
-                    Import-Module $Forensicsv2Path           
+                    $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
+                    Copy-Item $Forensicsv2Path -Destination "C:\Windows\Temp\" 
+                    $ForensicDLLPath="C:\Windows\Temp\PowerForensicsv2.dll"
+                    Import-Module $ForensicDLLPath -ErrorAction Continue        
                     $detaileddetails = Invoke-Command @osdetailsdetailedparameters
                 }
                 else {
                     #importing the modules in the sessions
                     $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
-                    Copy-Item $Forensicsv2Path -Destination "C:\Users\Public\" -ToSession $session
-                    Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path } | Out-Null
+                    Copy-Item $Forensicsv2Path -Destination "C:\Windows\Temp\" -ToSession $session
+                    Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Windows\Temp\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path -ErrorAction Continue} | Out-Null
                     $detaileddetails = Invoke-Command -Session $session @osdetailsdetailedparameters -ErrorAction Continue
                 }
             }

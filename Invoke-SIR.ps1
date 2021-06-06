@@ -314,7 +314,7 @@ begin {
             }
         }
         elseif ($UseSessions) {
-            write-host "[*][$(Get-TimeStamp)] Not supported, please remove C:\Users\Public\PowerForensicsv2.dll mannually" -ForegroundColor Yellow
+            write-host "[*][$(Get-TimeStamp)] Not supported, please remove C:\Windows\Temp\PowerForensicsv2.dll mannually" -ForegroundColor Yellow
         }
         else {
             write-host "[*][$(Get-TimeStamp)] Initiating Powershell clean up sessions with existing powershell console privileges" -ForegroundColor Yellow
@@ -324,7 +324,8 @@ begin {
                 $counter++
             }
         }
-        Invoke-Command -Session $cleanupsessions -ScriptBlock { $RemoteForensicsv2Path = "C:\Users\Public\PowerForensicsv2.dll"; Remove-Item -Force -Path  $RemoteForensicsv2Path -ErrorAction Continue; if( $(Test-Path $RemoteForensicsv2Path) -eq $false ){ function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }; write-host "[*][$(Get-TimeStamp)] DLL Removed" -ForegroundColor Yellow}} | Out-Null
+        Start-Sleep -Seconds 10
+        Invoke-Command -Session $cleanupsessions -ScriptBlock { $RemoteForensicsv2Path = "C:\Windows\Temp\PowerForensicsv2.dll"; Remove-Item -Force -Path  $RemoteForensicsv2Path -ErrorAction Continue; if( $(Test-Path $RemoteForensicsv2Path) -eq $false ){ function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }; write-host "[*][$(Get-TimeStamp)] DLL Removed" -ForegroundColor Yellow}} | Out-Null
         write-host "[*][$(Get-TimeStamp)] Removing clean up PSsessions" -ForegroundColor Yellow
         Remove-PSSession -Session $cleanupsessions
     }
@@ -349,7 +350,7 @@ process {
                 foreach ($computer in $ComputerName) {
                     write-host "[*][$(Get-TimeStamp)] Initiating Powershell sessions with password" -ForegroundColor Yellow
                     $sessionName = "SIR" + $counter
-                    $sessions += New-PSSession $computer -Credential $creds -Name $sessionName -ErrorAction Stop
+                    $sessions += New-PSSession $computer -Credential $creds -Name $sessionName -ErrorAction Stop 
                     $counter++
                 }
             }
@@ -416,8 +417,8 @@ process {
                 write-host "[*][$(Get-TimeStamp)] Removing existent PSsessions" -ForegroundColor Yellow
                 Remove-PSSession -Session $sessions
                 #After collection I needed to remove the powershell forensic DLL from the remote hosts, as there I am not aware on how to 
-                write-host "[*][$(Get-TimeStamp)] Cleaning up collection files (PowershellForensic DLL)" -ForegroundColor Yellow
-                if ($InformationLevel -eq "Medium" -or $InformationLevel -eq "Detailed"){ Get-CleanedUp }                
+                #write-host "[*][$(Get-TimeStamp)] Cleaning up collection files (PowershellForensic DLL)" -ForegroundColor Yellow
+                if ($InformationLevel -eq "Detailed"){ Get-CleanedUp }                
             }
             catch {
                 write-host "[-][$(Get-TimeStamp)] Houston we have a problem in Invoke-SIR - Collection... " -ForegroundColor Red

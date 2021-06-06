@@ -1,24 +1,15 @@
 # Powershell security incident response helpers
 
-Timelining an incident:  
-Incident -> Security Alert/Abnormal Behavior -> Incident Response Steps -> Forensic
+The goal of this script is at some point cover the below for Windows:
+    Live Reponse - Data Collection.                              (75%-80% Complete)  
+    Live Reponse - Containment.                                  (20%-30% Complete)
+    Live Reponse - Remediation/Eradication.                      (0% Complete)
 
-Usually incident reponse will comes to this:  
-Alert/Abnormal Behavior -> Someone find something wrong and turn off the server/desktop, lose all the memory and temporary files that would be crucial for further investigation -> As there is no way to determine what have been done the recommendation would be rebuild the server and reset all users that had any information/logged there.
-
-In an ideal situation:  
-Alert/Abnormal Behavior -> Artifact Collection -> Investigation -> confirmed incident ->Snapshot of the VM+Memory for futher investigation before any action -> Basic Containment ->  -> Remediation/Eradication -> lessons learned
-
-When EDR+SIEM are not in play for an incident all comes to adhoc IR this project is made to enable analysts to automate the common part of it that would be:  
-    Endpoint collection of logs and artifacts of interest.  
-    Endpoint Containment.  
-    Endpoint Remediation/Eradication.
-
-For Help
+For Help  
 Get-Help .\Invoke-SIR.ps1 -Full
 
-For examples
-Get-Help .\Invoke-SIR.ps1 -Examples
+For examples  
+Get-Help .\Invoke-SIR.ps1 -Examples  
 
 ## Invoke-SIR.ps1
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
@@ -100,6 +91,28 @@ Detailed:
     7 - Remove Application (Maybe)  
     8 - Remove browser extenstions  (Maybe)  
 
+## Notes about Collection best Pratices
+1 - Least intrusive modes of collection are:  
+    -.\Invoke-SIR.ps1 -Collection -CollectionType All -InformationLevel Medium -FilesCollectionLevel Medium (From a Network Drive or External Drive)  
+    -.\Invoke-SIR.ps1 -Collection -CollectionType Disk -InformationLevel Medium -FilesCollectionLevel Disabled -ComputerName host1 -UseCreds (Remote collection is done via WINRM, the remote file collections  uses a temporary folder in the affected system C:\Windows\Temp\Logs, C:\Windows\Temp\FWlogs\ because I could not find a way to copy those via WINRM directly, all of them a removed after copied).  
+2 - Intrusive modes and why:  
+    - For InformationLevel=detailed, it is needed to copy the PowerForensics DLL to the affected system so it can Import-Modules (by default powershell does not allow to import modules from network shares of external drives) from it, so it will modify the system at this point.  
+    - For remote FilesCollectionLevel=Basic or above the temporary folders are created in order to successfully copy the files.  
+3 - Just because it is intrusive it does not means it is not working or prohibited, it just means that you accept the risk to pollute or lose a potential evidence.  
+4 - If possible download the script in a network share accessible for a specific user that have read+execute access to all files and write permissions in "$PSScriptRoot\Collection\Reports"
+5 - When CollectionType=All memory dump is done fisrt and disk collection second.
+6 - While running InformationLevel=Medium or above Powershell modules:
+    - Autoruns can consume 250Mb+ RAM memory (in my tests)
+    - PowerForensics FileRecords (MFT) can consume 700Mb+ RAM.
+    - Remmeber that these will be executed just after the memory acquisition.
+7 - To dump the memory I am using WinPMem project and the dump is campatible with Volatility.
+8 - It creates a table of evidence file hashes at the end and give you the hash of the table in the output.
+9 - At this point the script just records the time of each executed function with the local system time, there is no remote time source to compare.
+
+## Knwon Issues:
+1 - When collecting the MFT records via WINRM there is a chance the records exceeds the max object sizie like:  
+    - The current deserialized object size of the data received from the remote server exceeded the allowed maximum object size. The current deserialized object size is 209747968. The allowed maximum object size    is 209715200.
+2 - When collecting the MFT recoreds via WINRM the file C:\Windows\Temp\PowerForensicsv2.dll might not be deleted automatically, so delete it mannually if needed.
 
 References and code sources:
 https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/  

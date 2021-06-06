@@ -117,6 +117,9 @@ function Invoke-DiskInformationGathering {
                 #confirming there is enough disk space for windows logs
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
                 #copying files to collection path
+                if($FilesCollectionLevel -eq "Disabled"){
+                    write-host "[*][$(Get-TimeStamp)] File Collection Disabled" -ForegroundColor Yellow
+                }
                 if($FilesCollectionLevel -eq "Basic"){
                     Invoke-BasicWindowsEventsCollection -Localhost -OutputPath $OutputPath
                 }
@@ -131,27 +134,32 @@ function Invoke-DiskInformationGathering {
             }
             else {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
-                foreach ($singlesession in $session) {
-                    $RandomMD5=Get-RandomMD5
-                    $RandomFolderPath="$($singlesession.ComputerName)" + "-" + "$RandomMD5"
+                #foreach ($singlesession in $session) {
+                    #$RandomMD5=Get-RandomMD5
+                    #$RandomFolderPath="$($singlesession.ComputerName)" + "-" + "$RandomMD5"
                     #$logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
-                    $logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
-                    $logstotalsize = $logstotalsize + $logsize
-                }
+                    #$logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath
+                    #$logstotalsize = $logstotalsize + $logsize
+                #}
+                #$logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath
                 #confirming there is enough disk space
-                Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
-                foreach ($singlesession in $session) {
+                #Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
+                #foreach ($singlesession in $session) {
+
+                    if($FilesCollectionLevel -eq "Disabled"){
+                        write-host "[*][$(Get-TimeStamp)] File Collection Disabled" -ForegroundColor Yellow
+                    }
                     if($FilesCollectionLevel -eq "Basic"){
-                        Invoke-BasicWindowsEventsCollection Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
+                        Invoke-BasicWindowsEventsCollection Session $session -OutputPath $OutputPath
                     }
                     if($FilesCollectionLevel -eq "Medium"){
-                        Invoke-WindowsPrefetchCollection -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
-                        Invoke-WindowsEventsCollection -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
-                        Invoke-WindowsFirewalllogsCollection -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath
+                        Invoke-WindowsPrefetchCollection -Session $session -OutputPath $OutputPath
+                        Invoke-WindowsEventsCollection -Session $session -OutputPath $OutputPath
+                        Invoke-WindowsFirewalllogsCollection -Session $session -OutputPath $OutputPath
                     }
                     #gathering system information
-                    Get-SystemDetails -Session $singlesession -OutputPath $OutputPath\$RandomFolderPath -InformationLevel $InformationLevel
-                }
+                    Get-SystemDetails -Session $session -OutputPath $OutputPath -InformationLevel $InformationLevel
+                #}
             }
         }
         catch {
@@ -174,8 +182,9 @@ function Invoke-MemoryInformationGathering {
         $OutputPath
     )
     begin{
+        if ($OutputPath) { New-Item -ItemType Directory -Force -Path "$OutputPath\MemDump" | Out-Null }
         $winpmembin="$PSScriptRoot\Collection\WinPMem\winpmem.exe"
-        $rawmemfilepath="$OutputPath\mem.raw"
+        $rawmemfilepath="$OutputPath\MemDump\mem.raw"
         function Get-TimeStamp {
             get-date -Format "MM/dd/yyyy HH:mm:ss K"
         }
@@ -184,7 +193,18 @@ function Invoke-MemoryInformationGathering {
     process{
         write-host "[+][$(Get-TimeStamp)] Inittiating Memory acquisition" -ForegroundColor Green
         Invoke-Expression "& '$winpmembin' '$rawmemfilepath'"
-        write-host "[*][$(Get-TimeStamp)] Please check if the file mem.raw has been created successfully." -ForegroundColor Yellow
+        if($(Test-Path -Path "$rawmemfilepath" -PathType Leaf) -eq $true){
+            write-host "[+][$(Get-TimeStamp)] File mem.raw has been created successfully" -ForegroundColor Green
+            #$memdumphash = Get-FileHash -Algorithm SHA256 $rawmemfilepath
+            #$memrawsha256=$memdumphash.Hash
+            #write-host "[+][$(Get-TimeStamp)] File mem.raw sha256 is: $memrawsha256" -ForegroundColor Green
+            #write-host "[+][$(Get-TimeStamp)] Exporting SHA256 value to csv file located $sha256csvpath" -ForegroundColor Green
+            #$memdumphash | Export-Csv -Path $sha256csvpath
+        }
+        else{
+            write-host "[-][$(Get-TimeStamp)] Something went wrong" -ForegroundColor Red
+        }
+        
     }   
     
 }
@@ -228,6 +248,19 @@ function Invoke-InformationGathering {
             foreach ($string in $MD5) {$randomMD5string+=$string}
             return $randomMD5string
         }
+        function Get-EvidenceHash{
+            param(
+                [Parameter()]
+                [Object]
+                $EvidencePath
+            )
+            $EvidenceHashTable=@()
+            $AllEvidenceFiles = (Get-ChildItem -Recurse -Path $EvidencePath).FullName
+            foreach($EvidenceFile in $AllEvidenceFiles){
+                $EvidenceHashTable += Get-FileHash $EvidenceFile
+            }
+            return $EvidenceHashTable
+        }
 
     }
     Process {
@@ -244,23 +277,35 @@ function Invoke-InformationGathering {
                     Invoke-MemoryInformationGathering -LocalHost -OutputPath $OutputPath
                 }
                 elseif ($InformationGatheringType -eq "All") { 
-                    Invoke-DiskInformationGathering -LocalHost -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
                     Invoke-MemoryInformationGathering -LocalHost -OutputPath $OutputPath
+                    Invoke-DiskInformationGathering -LocalHost -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
                 }
                 else {
                     write-host "[-] Information Gathering type not existent or not implemented, check spelling and try again." -ForegroundColor Red
                 }
+                Write-host  "[+][$(Get-TimeStamp)] Creating evidence Hash Table." -ForegroundColor Green
+                $EvidecenHashTable = Get-EvidenceHash -EvidencePath "$OutputPath"
+                $EvidecenHashTable | Export-Csv -Path "$OutputPath\EvidenceHashTable.csv"
+                $HashValue= (Get-FileHash -Algorithm SHA256 "$OutputPath\EvidenceHashTable.csv").Hash
+                $hashtablepath="$OutputPath\EvidenceHashTable.csv"
+                Write-host  "[+][$(Get-TimeStamp)] SHA256 hash for the table hash in $hashtablepath is $HashValue" -ForegroundColor Green
             }
             else {
-                if ($InformationGatheringType -eq "Disk") {
-                    Invoke-DiskInformationGathering -Session $session -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
-                }
-                elseif ($InformationGatheringType -eq "Memory") { 
-                    #Invoke-MemoryInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $Session -OutputPath $OutputPath
-                    Write-host  "[-][$(Get-TimeStamp)] Memory dump via network is not recomended." -ForegroundColor Red
-                }
-                else {
-                    write-host "[-][$(Get-TimeStamp)] Information Gathering type  not existent or not implemented, check spelling and try again." -ForegroundColor Red
+                foreach ($singlesession in $session) {
+                    $RandomMD5=Get-RandomMD5
+                    $RandomFolderPath="$($singlesession.ComputerName)" + "-" + "$RandomMD5"
+                    $OutputPath="$OutputPath\$RandomFolderPath"
+                    if ($OutputPath) { New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null }  
+                    if ($InformationGatheringType -eq "Disk") {
+                        Invoke-DiskInformationGathering -Session $singlesession -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
+                    }
+                    elseif ($InformationGatheringType -eq "Memory") { 
+                        #Invoke-MemoryInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $Session -OutputPath $OutputPath
+                        Write-host  "[-][$(Get-TimeStamp)] Memory dump via network is not recomended." -ForegroundColor Red
+                    }
+                    else {
+                        write-host "[-][$(Get-TimeStamp)] Information Gathering type  not existent or not implemented, check spelling and try again." -ForegroundColor Red
+                    }
                 }
             }
         }

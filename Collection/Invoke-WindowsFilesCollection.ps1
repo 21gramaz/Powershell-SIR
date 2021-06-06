@@ -30,7 +30,7 @@ Detailed:
 function Get-TimeStamp {
     get-date -Format "MM/dd/yyyy HH:mm:ss K"
 }
-function Invoke-WindowsEventsCollection {
+function Invoke-WindowsEventsCollection {   
     param (
         [Parameter()]
         [switch]
@@ -53,7 +53,7 @@ function Invoke-WindowsEventsCollection {
             }
 
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Windows events copy"  -ForegroundColor Green
-            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Destination "C:\Users\Public\Logs" -ErrorAction Continue
+            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Destination "C:\Windows\Temp\Logs" -ErrorAction Continue
         }
         $copywindowseventsparameters = @{scriptblock = $copywindowsevents }
         $removetempfolder = {
@@ -62,7 +62,7 @@ function Invoke-WindowsEventsCollection {
             }
 
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Removing temp folder"  -ForegroundColor Green
-            Remove-Item -Recurse -Force -Path "C:\Users\Public\Logs"
+            Remove-Item -Recurse -Force -Path "C:\Windows\Temp\Logs"
         }
         $removetempfolderparameters = @{scriptblock = $removetempfolder }
 
@@ -76,9 +76,10 @@ function Invoke-WindowsEventsCollection {
         }
         else {
             Invoke-Command -Session $Session @copywindowseventsparameters
-            Copy-Item -FromSession $Session "C:\Users\Public\Logs" -Destination $OutputPath -Recurse | Out-Null
+            Copy-Item -FromSession $Session "C:\Windows\Temp\Logs" -Destination $OutputPath -Recurse | Out-Null
             Invoke-Command -Session $session @removetempfolderparameters
         }
+
     }
 
 
@@ -108,22 +109,13 @@ function Invoke-WindowsPrefetchCollection {
 
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Verifying if Prefetch is enabled"  -ForegroundColor Green
             if(Test-Path "C:\Windows\Prefetch"){
-                Copy-Item -Recurse -Path "C:\Windows\Prefetch\" -Destination "C:\Users\Public\Prefetch"
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Prefetch folder exists"  -ForegroundColor Green
             }
             else{
                 write-host "[-][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Prefetch probably disabled."  -ForegroundColor Red
             }
         }
         $copywindowsprefetchsparameters = @{scriptblock = $copywindowsprefetch }
-        $removetempfolder = {
-            function Get-TimeStamp {
-                get-date -Format "MM/dd/yyyy HH:mm:ss K"
-            }
-
-            write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Removing temp folder"  -ForegroundColor Green
-            Remove-Item -Recurse -Force -Path "C:\Users\Public\Prefetch"
-        }
-        $removetempfolderparameters = @{scriptblock = $removetempfolder }
     }
     process {
         if ($Localhost) {
@@ -144,9 +136,8 @@ function Invoke-WindowsPrefetchCollection {
         else {
             try {
                 Invoke-Command -Session $Session @copywindowsprefetchsparameters
-                #Copy-Item -FromSession $Session "C:\Users\Public\Prefetch" -Destination $OutputPath -Recurse -ErrorAction Continue | Out-Null
-                Copy-Item -FromSession $Session "C:\Windows\Prefetch\" -Destination $OutputPath -Recurse -ErrorAction Continue | Out-Null
-                Invoke-Command -Session $session @removetempfolderparameters
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Prefetch files copy"  -ForegroundColor Green                
+                Copy-Item -FromSession $Session "C:\Windows\Prefetch\" -Destination $OutputPath -Filter *.pf -Recurse -ErrorAction Continue | Out-Null
             }
             catch {
                 write-host "[-][$(Get-TimeStamp)] Houston we have a problem copying prefetch files... " -ForegroundColor Red
@@ -277,9 +268,9 @@ function Invoke-BasicWindowsEventsCollection {
             }
 
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Basic Windows events copy (Security/System/Appliacations)"  -ForegroundColor Green
-            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Filter "Security*" -Destination "C:\Users\Public\Logs"
-            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Filter "System*" -Destination "C:\Users\Public\Logs"
-            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Filter "Application*" -Destination "C:\Users\Public\Logs"
+            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Filter "Security*" -Destination "C:\Windows\Temp\Logs"
+            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Filter "System*" -Destination "C:\Windows\Temp\Logs"
+            Copy-Item -Recurse -Force -Path "C:\Windows\System32\winevt\Logs\" -Filter "Application*" -Destination "C:\Windows\Temp\Logs"
         }
         $copywindowseventsparameters = @{scriptblock = $copywindowsevents }
         $removetempfolder = {
@@ -288,7 +279,7 @@ function Invoke-BasicWindowsEventsCollection {
             }
 
             write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Removing temp folder"  -ForegroundColor Green
-            Remove-Item -Recurse -Force -Path "C:\Users\Public\Logs"
+            Remove-Item -Recurse -Force -Path "C:\Windows\Temp\Logs"
         }
         $removetempfolderparameters = @{scriptblock = $removetempfolder }
 
@@ -305,7 +296,7 @@ function Invoke-BasicWindowsEventsCollection {
         }
         else {
             Invoke-Command -Session $Session @copywindowseventsparameters
-            Copy-Item -FromSession $Session "C:\Users\Public\Logs" -Destination $OutputPath -Recurse | Out-Null
+            Copy-Item -FromSession $Session "C:\Windows\Temp\Logs" -Destination $OutputPath -Recurse | Out-Null
             Invoke-Command -Session $session @removetempfolderparameters
         }
     }
@@ -351,14 +342,15 @@ function Invoke-WindowsFirewalllogsCollection {
             if ($fwenabledflag) {
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Initiating Firewall logs files copy"  -ForegroundColor Green
                 $fwlogpaths = $fwprofiles.LogFileName | Sort-Object -Unique
+
                 foreach ($fwlogpath in $fwlogpaths) {
                     $translatedfwlogpaths = [System.Environment]::ExpandEnvironmentVariables("$fwlogpath")
                     if($Localhost){
                         Copy-Item -Recurse -Path $translatedfwlogpaths -Destination "$OutputPath\FWlogs" -ErrorAction Continue
                     }
                     else{
-                        if($(Test-Path "C:\Users\Public\FWlogs") -eq $false){New-Item -ItemType Directory -Force -Path "C:\Users\Public\FWlogs" | Out-Null}
-                        Copy-Item -Recurse -Path $translatedfwlogpaths -Destination "C:\Users\Public\FWlogs" -ErrorAction Continue
+                        if($(Test-Path "C:\Windows\Temp\FWlogs") -eq $false){New-Item -ItemType Directory -Force -Path "C:\Windows\Temp\FWlogs" | Out-Null}
+                        Copy-Item -Recurse -Path $translatedfwlogpaths -Destination "C:\Windows\Temp\FWlogs" -ErrorAction Continue
                     }
                 }
             }
@@ -368,9 +360,9 @@ function Invoke-WindowsFirewalllogsCollection {
             function Get-TimeStamp {
                 get-date -Format "MM/dd/yyyy HH:mm:ss K"
             }
-            if(Test-Path "C:\Users\Public\FWlogs"){
+            if(Test-Path "C:\Windows\Temp\FWlogs"){
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Removing temp folder"  -ForegroundColor Green
-                Remove-Item -Recurse -Force -Path "C:\Users\Public\FWlogs"
+                Remove-Item -Recurse -Force -Path "C:\Windows\Temp\FWlogs" -ErrorAction SilentlyContinue
             }            
         }
         $removetempfolderparameters = @{scriptblock = $removetempfolder }
@@ -391,7 +383,7 @@ function Invoke-WindowsFirewalllogsCollection {
         else {
             try {
                 Invoke-Command -Session $session @copywindowsfirewalllogparameters
-                Copy-Item -FromSession $Session "C:\Users\Public\FWLogs" -Destination "$OutputPath" -Recurse -ErrorAction Continue | Out-Null
+                Copy-Item -FromSession $Session "C:\Windows\Temp\FWLogs" -Destination "$OutputPath" -Recurse -ErrorAction Continue | Out-Null
                 Invoke-Command -Session $session @removetempfolderparameters
             }
             catch {

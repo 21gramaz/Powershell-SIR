@@ -115,11 +115,11 @@ Detailed:
     2 - When collecting the MFT recoreds via WINRM the file C:\Windows\Temp\PowerForensicsv2.dll might not be deleted automatically, so delete it mannually if needed.  
 
 References and code sources:  
-https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/  
-https://github.com/davehull/Kansa/tree/master/Modules  
-https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershell_3393  
-https://powerforensics.readthedocs.io/en/latest/  
-https://github.com/LeeHolmes/AutoRuns  
-https://github.com/Velocidex/WinPmem/releases  
-https://www.sans.org/security-resources/posters/memory-forensics-cheat-sheet/365/download   
-Incident Response & Computer Forensics, Third Edition  
+- https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/  
+- https://github.com/davehull/Kansa/tree/master/Modules  
+- https://digital-forensics.sans.org/community/papers/gcfa/live-response-powershell_3393  
+- https://powerforensics.readthedocs.io/en/latest/  
+- https://github.com/LeeHolmes/AutoRuns  
+- https://github.com/Velocidex/WinPmem/releases  
+- https://www.sans.org/security-resources/posters/memory-forensics-cheat-sheet/365/download   
+- Incident Response & Computer Forensics, Third Edition  

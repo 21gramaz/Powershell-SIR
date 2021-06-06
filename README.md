@@ -14,6 +14,7 @@ Get-Help .\Invoke-SIR.ps1 -Examples
 ## Invoke-SIR.ps1
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
     2 - Creates PSsessions used to run the the modules.  
+    3 - Requires Powershell 5.1.
     Call one of the subsequent scripts to perform artifact collection, containment or remediation depending one what is asked in the paramenters.  
 
 ## Invoke-InformationGathering.ps1

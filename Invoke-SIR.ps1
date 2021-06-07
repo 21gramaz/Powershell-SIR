@@ -81,8 +81,7 @@
 
     Advanced:
     - MFT records                                                                       Done
-    - SHIM cache                                                                        Not Implemented
-    - AM Cache                                                                          Not Implemented
+    - SHIM cache                                                                        Done
     - Collect Number of hashed passwords cached in the system.                          Not Implemented
 
   .PARAMETER FilesCollectionLevel
@@ -292,9 +291,6 @@ begin {
 
             write-host "[+][$(Get-TimeStamp)] Downloading latest PowerForensicsv2 Module" -ForegroundColor Green
             Save-Module -Name PowerForensicsv2 -Repository PSGallery -Path "$PSScriptRoot\Collection\"
-            #$PowerForensicsv2ModulesPath=Get-ChildItem -Path "$PSScriptRoot\Collection\PowerForensicsv2\" -Recurse Autoruns.psm1
-            #$AutoRunPS1=$($PowerForensicsv2ModulesPath.DirectoryName) + "\AutoRuns.ps1"
-            #copy-item $PowerForensicsv2ModulesPath.FullName -Destination $AutoRunPS1
             if(Test-Path -Path "$PSScriptRoot\Collection\PowerForensicsv2"){
                 write-host "[+][$(Get-TimeStamp)] PowerForensicsv2 Downloaded" -ForegroundColor Green
             }
@@ -324,8 +320,10 @@ begin {
                 $counter++
             }
         }
-        Start-Sleep -Seconds 10
-        Invoke-Command -Session $cleanupsessions -ScriptBlock { $RemoteForensicsv2Path = "C:\Windows\Temp\PowerForensicsv2.dll"; Remove-Item -Force -Path  $RemoteForensicsv2Path -ErrorAction Continue; if( $(Test-Path $RemoteForensicsv2Path) -eq $false ){ function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }; write-host "[*][$(Get-TimeStamp)] DLL Removed" -ForegroundColor Yellow}} | Out-Null
+        Start-Sleep -Seconds 120
+        foreach ($singlesession in $cleanupsessions){
+            Invoke-Command -Session $singlesession -ScriptBlock { $RemoteForensicsv2Path = "C:\Windows\Temp\PowerForensicsv2.dll"; Remove-Item -Force -Path  $RemoteForensicsv2Path -ErrorAction Continue; if( $(Test-Path $RemoteForensicsv2Path) -eq $false ){ function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }; write-host "[*][$(Get-TimeStamp)] DLL Removed" -ForegroundColor Yellow}} | Out-Null
+        }
         write-host "[*][$(Get-TimeStamp)] Removing clean up PSsessions" -ForegroundColor Yellow
         Remove-PSSession -Session $cleanupsessions
     }
@@ -417,7 +415,6 @@ process {
                 write-host "[*][$(Get-TimeStamp)] Removing existent PSsessions" -ForegroundColor Yellow
                 Remove-PSSession -Session $sessions
                 #After collection I needed to remove the powershell forensic DLL from the remote hosts, as there I am not aware on how to 
-                #write-host "[*][$(Get-TimeStamp)] Cleaning up collection files (PowershellForensic DLL)" -ForegroundColor Yellow
                 if ($InformationLevel -eq "Detailed"){ Get-CleanedUp }                
             }
             catch {

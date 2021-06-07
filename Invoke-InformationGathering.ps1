@@ -40,12 +40,12 @@ function Invoke-DiskInformationGathering {
         $Session,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet("Basic", "Medium","Detailed")]
+        [ValidateSet("Basic", "Medium", "Detailed")]
         [string]
         $InformationLevel,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet("Disabled","Basic", "Medium","Detailed")]
+        [ValidateSet("Disabled", "Basic", "Medium", "Detailed")]
         [string]
         $FilesCollectionLevel
     )
@@ -54,12 +54,6 @@ function Invoke-DiskInformationGathering {
         $ErrorActionPreference = "stop"
         $OutputDrive = (Get-Item $OutputPath).PSDrive.Name
 
-        function Get-RandomMD5{
-            #https://gist.githubusercontent.com/benrobot/67bacea1b1bbe4eb0d9529ba2c65b2a6/raw/4f36375e8a32cc007d868199f8500a286f1ec774/HashString.ps1 changed from sha256 to md5 because of path size.
-            $MD5=new-object System.Security.Cryptography.MD5CryptoServiceProvider | ForEach-Object {$_.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("$(Get-Date -UFormat %s)"))} | ForEach-Object {$_.ToString("x2")}
-            foreach ($string in $MD5) {$randomMD5string+=$string}
-            return $randomMD5string
-        }
         function Get-TimeStamp {
             get-date -Format "MM/dd/yyyy HH:mm:ss K"
         }
@@ -112,18 +106,17 @@ function Invoke-DiskInformationGathering {
             Import-Module -Name "$PSScriptRoot\Collection\Get-OSdetails.ps1"
             if ($Localhost) {
                 #capturing logs metadata info: size, retention, creation date, sha256 hash.
-                #$formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath\$env:COMPUTERNAME
                 $formatedlogsize = Invoke-WindowsEventsCollectionMetadata -LocalHost -OutputPath $OutputPath
                 #confirming there is enough disk space for windows logs
                 Confirm-DiskSpace -LogSize $formatedlogsize -OutputDrive $OutputDrive
                 #copying files to collection path
-                if($FilesCollectionLevel -eq "Disabled"){
+                if ($FilesCollectionLevel -eq "Disabled") {
                     write-host "[*][$(Get-TimeStamp)] File Collection Disabled" -ForegroundColor Yellow
                 }
-                if($FilesCollectionLevel -eq "Basic"){
+                if ($FilesCollectionLevel -eq "Basic") {
                     Invoke-BasicWindowsEventsCollection -Localhost -OutputPath $OutputPath
                 }
-                if($FilesCollectionLevel -eq "Medium"){
+                if ($FilesCollectionLevel -eq "Medium") {
                     Invoke-WindowsEventsCollection -Localhost -OutputPath $OutputPath
                     Invoke-WindowsPrefetchCollection -Localhost -OutputPath $OutputPath
                     Invoke-WindowsFirewalllogsCollection -Localhost -OutputPath $OutputPath
@@ -133,33 +126,22 @@ function Invoke-DiskInformationGathering {
                 Get-SystemDetails -Localhost -OutputPath $OutputPath -InformationLevel $InformationLevel
             }
             else {
-                #capturing logs metadata info: size, retention, creation date, sha256 hash.
-                #foreach ($singlesession in $session) {
-                    #$RandomMD5=Get-RandomMD5
-                    #$RandomFolderPath="$($singlesession.ComputerName)" + "-" + "$RandomMD5"
-                    #$logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath\$($singlesession.ComputerName)
-                    #$logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath
-                    #$logstotalsize = $logstotalsize + $logsize
-                #}
-                #$logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath
                 #confirming there is enough disk space
-                #Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $OutputDrive
-                #foreach ($singlesession in $session) {
-
-                    if($FilesCollectionLevel -eq "Disabled"){
-                        write-host "[*][$(Get-TimeStamp)] File Collection Disabled" -ForegroundColor Yellow
-                    }
-                    if($FilesCollectionLevel -eq "Basic"){
-                        Invoke-BasicWindowsEventsCollection Session $session -OutputPath $OutputPath
-                    }
-                    if($FilesCollectionLevel -eq "Medium"){
-                        Invoke-WindowsPrefetchCollection -Session $session -OutputPath $OutputPath
-                        Invoke-WindowsEventsCollection -Session $session -OutputPath $OutputPath
-                        Invoke-WindowsFirewalllogsCollection -Session $session -OutputPath $OutputPath
-                    }
-                    #gathering system information
-                    Get-SystemDetails -Session $session -OutputPath $OutputPath -InformationLevel $InformationLevel
-                #}
+                $logsize = Invoke-WindowsEventsCollectionMetadata -Session $singlesession -OutputPath $OutputPath
+                Confirm-DiskSpace -LogSize $logstotalsize -OutputDrive $logsize 
+                if ($FilesCollectionLevel -eq "Disabled") {
+                    write-host "[*][$(Get-TimeStamp)] File Collection Disabled" -ForegroundColor Yellow
+                }
+                if ($FilesCollectionLevel -eq "Basic") {
+                    Invoke-BasicWindowsEventsCollection Session $session -OutputPath $OutputPath
+                }
+                if ($FilesCollectionLevel -eq "Medium") {
+                    Invoke-WindowsPrefetchCollection -Session $session -OutputPath $OutputPath
+                    Invoke-WindowsEventsCollection -Session $session -OutputPath $OutputPath
+                    Invoke-WindowsFirewalllogsCollection -Session $session -OutputPath $OutputPath
+                }
+                #gathering system information
+                Get-SystemDetails -Session $session -OutputPath $OutputPath -InformationLevel $InformationLevel
             }
         }
         catch {
@@ -179,30 +161,62 @@ function Invoke-MemoryInformationGathering {
 
         [Parameter()]
         [String]
-        $OutputPath
+        $OutputPath,
+
+        [Parameter()]
+        [Object]
+        $Session
     )
-    begin{
+    begin {
         if ($OutputPath) { New-Item -ItemType Directory -Force -Path "$OutputPath\MemDump" | Out-Null }
-        $winpmembin="$PSScriptRoot\Collection\WinPMem\winpmem.exe"
-        $rawmemfilepath="$OutputPath\MemDump\mem.raw"
+        $winpmembin = "$PSScriptRoot\Collection\WinPMem\winpmem.exe"
+        $rawmemfilepath = "$OutputPath\MemDump\mem.raw"
         function Get-TimeStamp {
             get-date -Format "MM/dd/yyyy HH:mm:ss K"
         }
 
+        $memoryacquisition= {
+            function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }
+            $remotewinpmembin = "C:\Windows\Temp\winpmem.exe"
+            $remoterawmemfilepath = "C:\Windows\Temp\mem.raw"
+            Invoke-Expression "& '$remotewinpmembin' '$remoterawmemfilepath'"
+            if ($(Test-Path -Path "$remoterawmemfilepath" -PathType Leaf) -eq $true) {
+                $memorydumphash = Get-FileHash -Algorithm SHA256 -Path $remoterawmemfilepath
+                write-host "[+][$(Get-TimeStamp)] File mem.raw has been created successfully with hash $memorydumphash, check in the EvidenceHashTable.csv if it matches" -ForegroundColor Green
+            }
+            else {
+                write-host "[-][$(Get-TimeStamp)] Something went wrong" -ForegroundColor Red
+            }
+        }
+        $memoryacquisitionparameters = @{scriptblock = $memoryacquisition }
+
+        $removetempfiles= {
+            Write-host  "[*][$(Get-TimeStamp)] Removing temporary files" -ForegroundColor Yellow
+            Remove-Item -Recurse -Force -Path "C:\Windows\Temp\winpmem.exe"
+            Remove-Item -Recurse -Force -Path "C:\Windows\Temp\mem.raw"
+        }
+        $removetempfilesparameters = @{scriptblock = $removetempfiles}
     }
-    process{
+
+    process {
         write-host "[+][$(Get-TimeStamp)] Inittiating Memory acquisition" -ForegroundColor Green
-        Invoke-Expression "& '$winpmembin' '$rawmemfilepath'"
-        if($(Test-Path -Path "$rawmemfilepath" -PathType Leaf) -eq $true){
-            write-host "[+][$(Get-TimeStamp)] File mem.raw has been created successfully" -ForegroundColor Green
-            #$memdumphash = Get-FileHash -Algorithm SHA256 $rawmemfilepath
-            #$memrawsha256=$memdumphash.Hash
-            #write-host "[+][$(Get-TimeStamp)] File mem.raw sha256 is: $memrawsha256" -ForegroundColor Green
-            #write-host "[+][$(Get-TimeStamp)] Exporting SHA256 value to csv file located $sha256csvpath" -ForegroundColor Green
-            #$memdumphash | Export-Csv -Path $sha256csvpath
+        if($Localhost){
+            Invoke-Expression "& '$winpmembin' '$rawmemfilepath'"
+            if ($(Test-Path -Path "$rawmemfilepath" -PathType Leaf) -eq $true) {
+                write-host "[+][$(Get-TimeStamp)] File mem.raw has been created successfully" -ForegroundColor Green
+            }
+            else {
+                write-host "[-][$(Get-TimeStamp)] Something went wrong" -ForegroundColor Red
+            }
         }
         else{
-            write-host "[-][$(Get-TimeStamp)] Something went wrong" -ForegroundColor Red
+            Write-host  "[*][$(Get-TimeStamp)] Memory dump via winrm is not recomended, but who am I to judge?" -ForegroundColor Yellow
+            write-host "[+][$(Get-TimeStamp)] Copying WinPMem to target system" -ForegroundColor Green
+            Copy-Item $winpmembin -Destination "C:\Windows\Temp" -ToSession $Session
+            Invoke-Command -Session $session @memoryacquisitionparameters
+            write-host "[+][$(Get-TimeStamp)] Copying memory dump from target system" -ForegroundColor Green
+            Copy-Item "C:\Windows\Temp\mem.raw" -Destination "$OutputPath\MemDump\" -FromSession $Session
+            Invoke-Command -Session $session @removetempfilesparameters
         }
         
     }   
@@ -228,12 +242,12 @@ function Invoke-InformationGathering {
         $OutputPath,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet("Basic", "Medium","Detailed")]
+        [ValidateSet("Basic", "Medium", "Detailed")]
         [string]
         $InformationLevel,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet("Disabled","Basic", "Medium","Detailed")]
+        [ValidateSet("Disabled", "Basic", "Medium", "Detailed")]
         [string]
         $FilesCollectionLevel,
 
@@ -242,21 +256,21 @@ function Invoke-InformationGathering {
         $Session
     )
     begin {
-        function Get-RandomMD5{
+        function Get-RandomMD5 {
             #https://gist.githubusercontent.com/benrobot/67bacea1b1bbe4eb0d9529ba2c65b2a6/raw/4f36375e8a32cc007d868199f8500a286f1ec774/HashString.ps1 changed from sha256 to md5 because of path size.
-            $MD5=new-object System.Security.Cryptography.MD5CryptoServiceProvider | ForEach-Object {$_.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("$(Get-Date -UFormat %s)"))} | ForEach-Object {$_.ToString("x2")}
-            foreach ($string in $MD5) {$randomMD5string+=$string}
+            $MD5 = new-object System.Security.Cryptography.MD5CryptoServiceProvider | ForEach-Object { $_.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("$(Get-Date -UFormat %s)")) } | ForEach-Object { $_.ToString("x2") }
+            foreach ($string in $MD5) { $randomMD5string += $string }
             return $randomMD5string
         }
-        function Get-EvidenceHash{
+        function Get-EvidenceHash {
             param(
                 [Parameter()]
                 [Object]
                 $EvidencePath
             )
-            $EvidenceHashTable=@()
+            $EvidenceHashTable = @()
             $AllEvidenceFiles = (Get-ChildItem -Recurse -Path $EvidencePath).FullName
-            foreach($EvidenceFile in $AllEvidenceFiles){
+            foreach ($EvidenceFile in $AllEvidenceFiles) {
                 $EvidenceHashTable += Get-FileHash $EvidenceFile
             }
             return $EvidenceHashTable
@@ -266,9 +280,9 @@ function Invoke-InformationGathering {
     Process {
         try {
             if ($LocalHost) {
-                $RandomMD5=Get-RandomMD5
-                $RandomFolderPath="$env:COMPUTERNAME" + "-" + "$RandomMD5"
-                $OutputPath="$OutputPath\$RandomFolderPath"
+                $RandomMD5 = Get-RandomMD5
+                $RandomFolderPath = "$env:COMPUTERNAME" + "-" + "$RandomMD5"
+                $OutputPath = "$OutputPath\$RandomFolderPath"
                 if ($OutputPath) { New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null }  
                 if ($InformationGatheringType -eq "Disk") { 
                     Invoke-DiskInformationGathering -LocalHost -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
@@ -286,26 +300,35 @@ function Invoke-InformationGathering {
                 Write-host  "[+][$(Get-TimeStamp)] Creating evidence Hash Table." -ForegroundColor Green
                 $EvidecenHashTable = Get-EvidenceHash -EvidencePath "$OutputPath"
                 $EvidecenHashTable | Export-Csv -Path "$OutputPath\EvidenceHashTable.csv"
-                $HashValue= (Get-FileHash -Algorithm SHA256 "$OutputPath\EvidenceHashTable.csv").Hash
-                $hashtablepath="$OutputPath\EvidenceHashTable.csv"
+                $HashValue = (Get-FileHash -Algorithm SHA256 "$OutputPath\EvidenceHashTable.csv").Hash
+                $hashtablepath = "$OutputPath\EvidenceHashTable.csv"
                 Write-host  "[+][$(Get-TimeStamp)] SHA256 hash for the table hash in $hashtablepath is $HashValue" -ForegroundColor Green
             }
             else {
                 foreach ($singlesession in $session) {
-                    $RandomMD5=Get-RandomMD5
-                    $RandomFolderPath="$($singlesession.ComputerName)" + "-" + "$RandomMD5"
-                    $OutputPath="$OutputPath\$RandomFolderPath"
+                    $RandomMD5 = Get-RandomMD5
+                    $RandomFolderPath = "$($singlesession.ComputerName)" + "-" + "$RandomMD5"
+                    $OutputPath = "$OutputPath\$RandomFolderPath"
                     if ($OutputPath) { New-Item -ItemType Directory -Force -Path $OutputPath | Out-Null }  
                     if ($InformationGatheringType -eq "Disk") {
                         Invoke-DiskInformationGathering -Session $singlesession -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
                     }
                     elseif ($InformationGatheringType -eq "Memory") { 
-                        #Invoke-MemoryInformationGathering -ComputerName $ComputerInfo.ComputerName -Session $Session -OutputPath $OutputPath
-                        Write-host  "[-][$(Get-TimeStamp)] Memory dump via network is not recomended." -ForegroundColor Red
+                        Invoke-MemoryInformationGathering -Session $singlesession -OutputPath $OutputPath   
+                    }
+                    elseif ($InformationGatheringType -eq "All") { 
+                        Invoke-MemoryInformationGathering -Session $singlesession -OutputPath $OutputPath  
+                        Invoke-DiskInformationGathering -Session $singlesession -OutputPath $OutputPath -InformationLevel $InformationLevel -FilesCollectionLevel $FilesCollectionLevel
                     }
                     else {
                         write-host "[-][$(Get-TimeStamp)] Information Gathering type  not existent or not implemented, check spelling and try again." -ForegroundColor Red
                     }
+                    Write-host  "[+][$(Get-TimeStamp)] Creating evidence Hash Table." -ForegroundColor Green
+                    $EvidecenHashTable = Get-EvidenceHash -EvidencePath "$OutputPath"
+                    $EvidecenHashTable | Export-Csv -Path "$OutputPath\EvidenceHashTable.csv"
+                    $HashValue = (Get-FileHash -Algorithm SHA256 "$OutputPath\EvidenceHashTable.csv").Hash
+                    $hashtablepath = "$OutputPath\EvidenceHashTable.csv"
+                    Write-host  "[+][$(Get-TimeStamp)] SHA256 hash for the table hash in $hashtablepath is $HashValue" -ForegroundColor Green
                 }
             }
         }

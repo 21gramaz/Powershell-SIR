@@ -1,15 +1,17 @@
 # Powershell security incident response helpers  
-  
-The goal of this script is at some point cover the below for Windows:    
+
+The goal of this Live Response helper is at some point cover the below for Windows:    
     Live Reponse - Data Collection.                              (75%-80% Complete)    
     Live Reponse - Containment.                                  (20%-30% Complete)    
     Live Reponse - Remediation/Eradication.                      (0% Complete)    
+
 
 For Help  
 Get-Help .\Invoke-SIR.ps1 -Full
 
 For examples  
 Get-Help .\Invoke-SIR.ps1 -Examples  
+
 
 ## Invoke-SIR.ps1
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
@@ -45,8 +47,7 @@ Medium:
 
 Advanced:  
 - MFT records                                                                       (Done)  
-- SHIM cache                                                                        (Not Implemented)  
-- AM Cache                                                                          (Not Implemented)  
+- SHIM cache                                                                        (Done)
 - Collect Number of hashed passwords cached in the system.                          (Not Implemented)  
 
 ### Windows File Collection:  
@@ -109,11 +110,17 @@ Detailed:
         7 - To dump the memory I am using WinPMem project and the dump is campatible with Volatility.
     8 - It creates a table of evidence file hashes at the end and give you the hash of the table in the output.
     9 - At this point the script just records the time of each executed function with the local system time, there is no remote time source to compare.
+    10 - ShimCache can be parsed using https://github.com/mandiant/ShimCacheParser from Mandiant (ShimCacheParser.py -r ).
+
+### Files that need Execute permissions:
+    1 - /SIR/Collection/WinPMem/winpmem.exe 
 
 ### Knwon Issues:
     1 - When collecting the MFT records via WINRM there is a chance the records exceeds the max object sizie like:  
         - The current deserialized object size of the data received from the remote server exceeded the allowed maximum object size. The current deserialized object size is 209747968. The allowed maximum object size    is 209715200.  
     2 - When collecting the MFT recoreds via WINRM the file C:\Windows\Temp\PowerForensicsv2.dll might not be deleted automatically, so delete it mannually if needed.  
+    3 - UpdateModules function does not update WinPmem automatically, it needs to be downloaded manually.
+
 
 References and code sources:  
 - https://isc.sans.edu/forums/diary/Using+Powershell+in+Basic+Incident+Response+A+Domain+Wide+KillSwitch/25088/  
@@ -124,3 +131,4 @@ References and code sources:
 - https://github.com/Velocidex/WinPmem/releases  
 - https://www.sans.org/security-resources/posters/memory-forensics-cheat-sheet/365/download   
 - Incident Response & Computer Forensics, Third Edition  
+- https://github.com/mandiant/ShimCacheParser

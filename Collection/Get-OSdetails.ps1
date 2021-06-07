@@ -168,10 +168,11 @@ function Get-SystemDetails {
 
                 write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: MFT records"  -ForegroundColor Green
                 $MasterFileTableRecords=Get-ForensicFileRecord
-
                 $properties = @{
                     MasterFileTableRecords  = $MasterFileTableRecords
                 }
+                write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Exporting ShimCache.reg from HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache"  -ForegroundColor Green
+                reg export "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" $OutputPath\ShimCache.reg
             }
             else {
                 write-host "[+][$(Get-TimeStamp)] Powershell version does not support collection"  -ForegroundColor Red
@@ -182,6 +183,17 @@ function Get-SystemDetails {
             return $detaileddetails
         }
         $osdetailsdetailedparameters = @{scriptblock = $osdetailsdetailed }
+        $remoteosdetailsdetailed = {
+            function Get-TimeStamp { get-date -Format "MM/dd/yyyy HH:mm:ss K" }
+            write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: Exporting ShimCache.reg from HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache"  -ForegroundColor Green
+            reg export "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" "C:\Windows\Temp\ShimCache.reg"  
+            write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] Gathering: MFT records"  -ForegroundColor Green
+            Get-ForensicFileRecord |  Export-Csv -Path "C:\Windows\Temp\MasterFileTableRecords.csv"
+            $mftfilehash = Get-FileHash -Path "C:\Windows\Temp\MasterFileTableRecords.csv" -Algorithm SHA256
+            $hash=$mftfilehash.Hash
+            write-host "[+][$(Get-TimeStamp)] [$env:COMPUTERNAME][*RemoteSystemTimeStamp] File hash for Master File Records: $hash "  -ForegroundColor Green
+        }
+        $remoteosdetailsdetailedparameters = @{scriptblock = $remoteosdetailsdetailed }
 
     }
     process {
@@ -226,7 +238,7 @@ function Get-SystemDetails {
                     $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
                     Copy-Item $Forensicsv2Path -Destination "C:\Windows\Temp\" 
                     $ForensicDLLPath="C:\Windows\Temp\PowerForensicsv2.dll"
-                    Import-Module $ForensicDLLPath -ErrorAction Continue        
+                    Import-Module $ForensicDLLPath -ErrorAction Continue      
                     $detaileddetails = Invoke-Command @osdetailsdetailedparameters
                 }
                 else {
@@ -234,7 +246,7 @@ function Get-SystemDetails {
                     $Forensicsv2Path = (Get-ChildItem -Path "$PSScriptRoot\PowerForensicsv2\" -Recurse PowerForensicsv2.dll).FullName
                     Copy-Item $Forensicsv2Path -Destination "C:\Windows\Temp\" -ToSession $session
                     Invoke-Command -Session $session -ScriptBlock { $RemoteForensicsv2Path = "C:\Windows\Temp\PowerForensicsv2.dll"; Import-Module $RemoteForensicsv2Path -ErrorAction Continue} | Out-Null
-                    $detaileddetails = Invoke-Command -Session $session @osdetailsdetailedparameters -ErrorAction Continue
+                    Invoke-Command -Session $session @remoteosdetailsdetailedparameters -ErrorAction Continue
                 }
             }
             
@@ -261,7 +273,14 @@ function Get-SystemDetails {
                 $mediumdetails.Autoruns | Export-Csv -Path $OutputPath\Autoruns.csv
             }
             if ($InformationLevel -eq "Detailed"){
-                $detaileddetails.MasterFileTableRecords | Export-Csv -Path $OutputPath\MasterFileTableRecords.csv -ErrorAction Continue
+                if($Localhost){
+                    $detaileddetails.MasterFileTableRecords | Export-Csv -Path $OutputPath\MasterFileTableRecords.csv -ErrorAction SilentlyContinue
+                }
+                else{
+                    Copy-Item "C:\Windows\Temp\MasterFileTableRecords.csv" -Destination $OutputPath -FromSession $session
+                    Copy-Item "C:\Windows\Temp\ShimCache.reg" -Destination $OutputPath -FromSession $session
+                    Invoke-Command -Session $session -ScriptBlock {Remove-Item -Force -Path "C:\Windows\Temp\MasterFileTableRecords.csv"}
+                }
             }
       
         }

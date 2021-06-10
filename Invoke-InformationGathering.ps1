@@ -133,7 +133,7 @@ function Invoke-DiskInformationGathering {
                     write-host "[*][$(Get-TimeStamp)] File Collection Disabled" -ForegroundColor Yellow
                 }
                 if ($FilesCollectionLevel -eq "Basic") {
-                    Invoke-BasicWindowsEventsCollection Session $session -OutputPath $OutputPath
+                    Invoke-BasicWindowsEventsCollection -Session $session -OutputPath $OutputPath
                 }
                 if ($FilesCollectionLevel -eq "Medium") {
                     Invoke-WindowsPrefetchCollection -Session $session -OutputPath $OutputPath

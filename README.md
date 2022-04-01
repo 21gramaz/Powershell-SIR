@@ -16,7 +16,7 @@ Do not forget to unblock the files, as they are not signed:
     - Browse to the script root folder and do something similar to the below to unblock the files:
     - $files=(Get-ChildItem -Recurse).FullName; foreach ($file in $files) {Unblock-File $file}  
 
-### Litle Reminder: do not run code that you do not know in your company, review it, sandbox it, monitor it.
+### Little Reminder: do not run code that you do not know in your company, review it, sandbox it, monitor it.
 
 ## Invoke-SIR.ps1
     1 - Check OS version, CPU architeture, Hostname, DNS resolution.  
